@@ -71,8 +71,8 @@ green_led FILE "green_led.p2"
 VAR
   LONG drawing_method_pointer
   BYTE current_screen
-  byte auto_mode
-  byte x
+  BYTE auto_mode
+  BYTE x
   WORD BACKGROUND_COLOR
   BYTE trend_values[MAX_DATA_VALUES]
   LONG last_time
