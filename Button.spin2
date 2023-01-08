@@ -1,0 +1,219 @@
+{
+  Button Object
+}
+CON
+  'DEBOUNCE_TIMER = 500
+  MAX_CHARACTERS = 8
+
+  #0, NORMAL_MODE, TOGGLE_MODE
+
+'Drawing Methods Constants
+  #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
+  #6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
+  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
+
+VAR
+'Attributes
+  long id                       'Unique ID - (window index << 4)|(button index)
+  long bg_color                 'background color
+  long fg_color                 'foreground color
+  long ol_color                 'outline = border
+  word xtop                     'Top Left X (Pixel)
+  word ytop                     'Top Left Y (Pixel)
+  word xbot                     'Bottom Right X (Pixel)
+  word ybot                     'Bottom Right Y (Pixel)
+  byte border_width             'Border width in pixels
+
+'Method Pointers
+  long event_handler            'Default event handler method pointer
+  long drawing_method_pointer   'Drawing method pointers
+
+'Internal state variables
+  long last_time                'Stores touch event debouncer last time value
+  byte configured               'Boolean flag to identify configured widgets in the window's list
+  byte enabled                  'Boolean flag to indicate widget can be drawn and can check for events
+  byte value                    'Virtual value of the widget
+  byte active_value
+  byte inactive_value
+
+'Button specific attributes
+  byte mode                     'Mode: 0 = Normal (no debouncing, value = active_value while event is true)
+                                'Mode: 1 = Toggle (debouncing, value toggles on successive events)
+  byte invert_border            'Boolean flag to invert border colors
+  LONG string_pointer           'Hub address of string memory (addresses are LONG but memory access in
+                                'hub is byte
+  byte contents[MAX_CHARACTERS+1]
+  byte font_size
+  byte padding
+  byte compression
+
+  word debounce_timer
+
+
+OBJ
+  color : "Colors"
+  util : "Utilities"
+
+PUB null()
+
+''+--------------------------------------------------------------------+
+''   WIDGET INTERFACE METHODS
+''+--------------------------------------------------------------------+
+PUB set_enable(e)
+  if e
+    enabled := true
+  else
+    enabled := false
+
+PUB draw()| w, h, tw, th, x, y
+''This method draws the graphical representation of this widget type
+  if drawing_method_pointer <> 0
+    'FILL
+    LONG[drawing_method_pointer][FILL_RECTANGLE](xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
+
+    'BORDER
+    util.draw_border(drawing_method_pointer,xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
+
+    'TEXT
+    if string_pointer <> 0
+      w := (xbot - xtop) - 2*border_width
+      h := (ybot - ytop) - 2*border_width
+
+      tw := util.get_text_width(string_pointer, font_size, compression)
+      th := util.get_text_height(font_size)
+
+      x := xtop + border_width + (w - tw)/2
+      y := ytop + border_width + (h - th)/2
+
+      util.draw_text(drawing_method_pointer,x,y,string_pointer,0,font_size,compression,bg_color,fg_color)
+
+PUB set_drawing_methods(METHOD_PTR)
+  drawing_method_pointer := METHOD_PTR
+
+PUB check_event(coord):is_mine | x, y
+  if configured AND enabled
+    x := coord.WORD[0]
+    y := coord.WORD[1]
+    if (x >= xtop AND x <= xbot) AND (y >= ytop AND y <= ybot)
+      is_mine := true
+      'debug("event at ", udec(id))
+
+      if (getms()-last_time) >= DEBOUNCE_TIMER          'debounce the event
+
+        if mode == TOGGLE_MODE              'Toggle or Event Mode
+          value := (value==inactive_value)?active_value:inactive_value
+
+        if event_handler <> 0
+          event_handler(id, value)   'call the event handler and pass along id of button and current value
+
+        last_time := getms()  'reset debounce timer
+
+
+''+--------------------------------------------------------------------+
+''   CONFIGURATION METHODS
+''+--------------------------------------------------------------------+
+PUB configure(i, xt, yt, w, h, bg, fg, ol)
+  id := i
+  xtop := xt
+  ytop := yt
+  xbot := w + xt 'xb
+  ybot := h + yt 'yb
+
+  bg_color := bg
+  fg_color := fg
+  ol_color := ol
+  border_width := 1
+  active_value := true
+  padding := 10
+  compression := 4
+  font_size := 2
+
+  string_pointer := @contents
+
+  debounce_timer := 500 'ms
+  configured := true
+  last_time := getms()
+
+PUB is_configured():conf
+  conf := configured
+
+PUB set_coordinates(xt, yt, xb, yb)
+  xtop := xt
+  ytop := yt
+  xbot := xb
+  ybot := yb
+
+PUB get_coordinates() : coords
+  coords.BYTE[0] := xtop
+  coords.BYTE[1] := ytop
+  coords.BYTE[2] := xbot
+  coords.BYTE[3] := ybot
+
+PUB set_colors(bg, fg, ol)
+  bg_color := bg
+  fg_color := fg
+  ol_color := ol
+
+PUB get_colors(): bg, fg, ol
+  bg := bg_color
+  fg := fg_color
+  ol := ol_color
+
+PUB set_font_size(s)
+  font_size := 1 #> s <# 2
+
+PUB set_compression(v)
+  compression := v
+
+''+--------------------------------------------------------------------+
+''   EVENT HANDLING METHODS
+''+--------------------------------------------------------------------+
+PUB set_event_handler(Method)
+  event_handler := Method    'Sets the default event handler of this object
+
+PUB call_event_handler(Method)
+  Method(id)                    'Calls a passed event handler
+
+''+--------------------------------------------------------------------+
+''   OTHER METHODS
+''+--------------------------------------------------------------------+
+PUB set_values(a,i)
+  active_value   := a
+  inactive_value := i
+
+
+PUB set_value(v)
+  value := v
+
+
+PUB get_value():v
+  v := value
+
+PUB set_invert(i)
+  invert_border := i
+
+PUB set_mode(m)
+  mode := m
+
+PUB set_border_width(bw)
+  border_width := bw
+
+PUB set_padding(p)
+  padding := p
+
+PUB set_contents(addr)|c,i
+  'Set new contents
+  repeat i from 0 to util.get_characters(addr)-1                   'Reserve last character place for the terminating 0
+    c := BYTE[addr][i]
+    if c <> 0
+      contents[i] := c
+    else
+      quit
+  contents[i+1] := 0
+
+PUB update_contents(s)|c
+  set_contents(s)
+  draw()
+
+PUB set_debounce(v)
+  debounce_timer := v

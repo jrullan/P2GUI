@@ -1,0 +1,416 @@
+{
+  Trend Lean Object
+  This trend object does not have the data array.
+  Instead it must be passed a pointer to an existing data array
+  and the size of the data array.
+
+  The idea is to make the object leaner and avoid bloating it
+  with a pre-determined size of data values.
+}
+{ Based on Screen Object}
+CON
+  MAX_WIDGETS = 8
+
+'Drawing Methods Constants
+  #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
+  #6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
+  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
+
+'Button constants
+  #0, LEFT_BTN, RIGHT_BTN, MODE_BTN, MARKER_BTN, MAX_BUTTONS
+
+'Text constants
+  #0, VALUE_TXT, POSITION_TXT, MAX_TEXTS
+
+VAR
+'Attributes
+  long bg_color       'background color
+  long fg_color       'foreground color
+  long ol_color       'outline = border
+  word xtop
+  word ytop
+  word xbot
+  word ybot
+  byte border_width
+  byte invert_border
+  long event_coordinates        'word[0]=x word[1]=y
+  long my_event_handler
+  long drawing_method_pointer
+  byte id
+  byte enabled
+  byte initialized
+
+'Widgets method pointers
+  LONG widget_enable_method[MAX_WIDGETS]
+  LONG widget_draw_method[MAX_WIDGETS]
+  LONG widget_check_event_method[MAX_WIDGETS]
+  LONG widget_counter
+
+'Trend variables
+  LONG data                     'Pointer to values array
+  BYTE max_data_values          'Size of values array
+  byte marker_enabled
+  BYTE value_text[8]
+  BYTE buffer_text[12]
+
+
+OBJ
+  util : "Utilities"
+  color: "Colors"
+  trend: "Trend_Lean"
+  button[MAX_BUTTONS] : "Button"
+  text[MAX_TEXTS] : "Text_Display"
+
+PUB null()
+
+
+''+--------------------------------------------------------------------+
+''   WIDGET INTERFACE METHODS
+''+--------------------------------------------------------------------+
+PUB set_enable(e):w
+  if e
+    enabled := true
+  else
+    enabled := false
+
+  if widget_counter > 0
+    repeat w from 0 to widget_counter-1
+      widget_enable_method[w](enabled)
+
+  if drawing_method_pointer <> 0 AND initialized == 0
+    init_ui()
+    initialized := 1
+
+PUB draw()| w
+  if enabled AND drawing_method_pointer <> 0
+
+    LONG[drawing_method_pointer][FILL_RECTANGLE](xtop,ytop,xbot,ybot,bg_color)
+
+    'BORDER
+    util.draw_border(drawing_method_pointer,xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
+
+
+    if widget_counter > 0
+      repeat w from 0 to widget_counter-1
+        widget_draw_method[w]()
+
+
+PUB check_event(coord):is_mine | x, y, i
+  if enabled
+    x := coord.WORD[0]
+    y := coord.WORD[1]
+    'debug("Screen pre-coords", udec(x), udec(y))
+
+
+    if (x >= xtop AND x <= xbot) AND (y >= ytop AND y <= ybot)
+      is_mine := true
+      event_coordinates := coord
+
+      if widget_counter > 0
+        repeat i from 0 to widget_counter-1
+          if widget_check_event_method[i](event_coordinates):1
+            quit
+
+
+PUB set_drawing_methods(METHOD_PTR)
+  drawing_method_pointer := METHOD_PTR
+
+
+''+--------------------------------------------------------------------+
+''   CONFIGURATION METHODS
+''+--------------------------------------------------------------------+
+PUB configure(i, addr, size, xt, yt, w, h, bg, fg, ol)|d
+  data := addr
+  max_data_values := size
+
+  id := i
+  xtop := xt
+  ytop := yt
+  xbot := w + xt 'xb
+  ybot := h + yt 'yb
+
+  bg_color := bg
+  fg_color := fg
+  ol_color := ol
+
+  border_width := 1
+  invert_border := false
+
+
+PRI init_ui()|x,y,w,h
+
+
+  x := xtop + border_width
+  y := ytop + border_width
+  w := 40
+  h := 30
+
+  button[MODE_BTN].configure(MODE_BTN, x, y, w, h, color.lighten(color.grey,15), color.black, color.grey)
+  button[MODE_BTN].set_border_width(2)
+  button[MODE_BTN].set_drawing_methods(drawing_method_pointer)
+  button[MODE_BTN].set_compression(6)
+  button[MODE_BTN].set_padding(2)
+  button[MODE_BTN].set_contents(String("m"))
+  button[MODE_BTN].set_event_handler(@plot_mode_event_handler)
+  button[MODE_BTN].set_mode(button.TOGGLE_MODE)
+  button[MODE_BTN].set_enable(true)
+  add_widget(@button[MODE_BTN].set_enable, @button[MODE_BTN].draw, @button[MODE_BTN].check_event)
+  debug("Added button MODE_BTN")
+
+
+  x := xtop + border_width + 40
+  y := ytop + border_width
+  w := (xbot - xtop) - 2*border_width - 80
+  h := 30 'controls height
+
+  text[VALUE_TXT].configure(VALUE_TXT, x, y, w, h, bg_color, fg_color, ol_color)
+  text[VALUE_TXT].set_drawing_methods(drawing_method_pointer)
+  text[VALUE_TXT].set_contents(String("0"))
+  text[VALUE_TXT].enable_buffering(false)
+  text[VALUE_TXT].set_align(text.RIGHT_ALIGN)
+  text[VALUE_TXT].set_padding(10)
+  text[VALUE_TXT].set_compression(6)
+  text[VALUE_TXT].set_border_width(1)
+  text[VALUE_TXT].set_invert(true)
+  text[VALUE_TXT].set_enable(true)
+  add_widget(@text[VALUE_TXT].set_enable, @text[VALUE_TXT].draw, @text[VALUE_TXT].check_event)
+  debug("Added text VALUE_TXT")
+
+
+  x := xbot - border_width - 40
+  y := ytop + border_width
+  w := 40
+  h := 30
+
+  button[MARKER_BTN].configure(MARKER_BTN, x, y, w, h, color.lighten(color.grey,15), color.black, color.grey)
+  button[MARKER_BTN].set_border_width(2)
+  button[MARKER_BTN].set_drawing_methods(drawing_method_pointer)
+  button[MARKER_BTN].set_contents(String("x"))
+  button[MARKER_BTN].set_compression(6)
+  button[MARKER_BTN].set_event_handler(@marker_event_handler)
+  button[MARKER_BTN].set_mode(button.TOGGLE_MODE)
+  button[MARKER_BTN].set_enable(true)
+  add_widget(@button[MARKER_BTN].set_enable, @button[MARKER_BTN].draw, @button[MARKER_BTN].check_event)
+  debug("Added button MARKER_BTN")
+
+
+  x := xtop + border_width
+  y := ytop + border_width + 30
+  w := (xbot - xtop) - 2*border_width
+  h := (ybot - ytop) - 2*border_width - 2*30 'controls height
+
+  trend.configure(0, data, max_data_values, x, y, w, h, bg_color, fg_color, ol_color)
+  trend.set_drawing_methods(drawing_method_pointer)
+  trend.set_auto_scale(false)
+  trend.set_border_width(2)
+  trend.enable_marker(false)
+  trend.set_enable(true)
+  add_widget(@trend.set_enable, @trend.draw, @trend.check_event)
+
+  x := xtop + border_width
+  y := ybot - border_width - 30
+  w := 40
+  h := 30 'controls height
+
+  button[LEFT_BTN].configure(LEFT_BTN, x, y, w, h, color.lighten(color.grey,15), color.black, color.grey)
+  button[LEFT_BTN].set_border_width(2)
+  button[LEFT_BTN].set_drawing_methods(drawing_method_pointer)
+  button[LEFT_BTN].set_contents(String("<"))
+  button[LEFT_BTN].set_compression(6)
+  button[LEFT_BTN].set_debounce(100)
+  button[LEFT_BTN].set_event_handler(@marker_event_handler)
+  'button[LEFT_BTN].set_mode(button.TOGGLE_MODE)
+  button[LEFT_BTN].set_enable(true)
+  add_widget(@button[LEFT_BTN].set_enable, @button[LEFT_BTN].draw, @button[LEFT_BTN].check_event)
+  debug("Added button LEFT_BTN")
+
+  x := xbot - border_width - 40
+  y := ybot - border_width - 30
+  w := 40
+  h := 30 'controls height
+
+  button[RIGHT_BTN].configure(RIGHT_BTN, x, y, w, h, color.lighten(color.grey,15), color.black, color.grey)
+  button[RIGHT_BTN].set_border_width(2)
+  button[RIGHT_BTN].set_drawing_methods(drawing_method_pointer)
+  button[RIGHT_BTN].set_contents(String(">"))
+  button[RIGHT_BTN].set_compression(6)
+  button[RIGHT_BTN].set_debounce(100)
+  button[RIGHT_BTN].set_event_handler(@marker_event_handler)
+  'button[RIGHT_BTN].set_mode(button.TOGGLE_MODE)
+  button[RIGHT_BTN].set_enable(true)
+  add_widget(@button[RIGHT_BTN].set_enable, @button[RIGHT_BTN].draw, @button[RIGHT_BTN].check_event)
+  debug("Added button LEFT_BTN")
+
+
+  'POSITION_TXT
+  x := xtop + border_width + 40
+  y := ybot - border_width - 30
+  w := (xbot - xtop) - 2*border_width - 80
+  h := 30 'controls height
+
+  text[POSITION_TXT].configure(POSITION_TXT, x, y, w, h, bg_color, fg_color, ol_color)
+  text[POSITION_TXT].set_drawing_methods(drawing_method_pointer)
+  text[POSITION_TXT].set_contents(String("p"))
+  text[POSITION_TXT].enable_buffering(false)
+  text[POSITION_TXT].set_align(text.RIGHT_ALIGN)
+  text[POSITION_TXT].set_padding(10)
+  text[POSITION_TXT].set_compression(6)
+  text[POSITION_TXT].set_border_width(1)
+  text[POSITION_TXT].set_invert(true)
+  text[POSITION_TXT].set_enable(true)
+  add_widget(@text[POSITION_TXT].set_enable, @text[POSITION_TXT].draw, @text[POSITION_TXT].check_event)
+  debug("Added text POSITION_TXT")
+
+PUB plot()
+  trend.plot()
+
+PUB clear_plot()
+  trend.clear_plot()
+
+PUB set_data_value(val)
+  trend.set_data_value(val)
+
+PUB plot_value(val)
+  trend.plot_value(val)
+
+PUB enable_marker(e)
+  trend.enable_marker(e)
+  if e == false
+    text[VALUE_TXT].set_contents(@" ")
+    text[VALUE_TXT].draw()
+  else
+    text[VALUE_TXT].set_value(BYTE[data][max_data_values-1])
+    text[VALUE_TXT].draw()
+
+
+PUB set_id(i)
+  id := i
+
+PUB get_enable():e
+  e := enabled
+
+PUB set_bg_color(c)|t, bg,fg,ol
+  bg_color := c
+  bg,fg,ol := trend.get_colors()
+  trend.set_colors(c,fg,ol)
+  repeat t from 0 to MAX_TEXTS-1
+    bg,fg,ol := text[t].get_colors()
+    text[t].set_colors(c, fg, ol)
+
+PUB set_fg_color(c)
+  fg_color := c
+
+PUB set_ol_color(c)
+  ol_color := c
+
+PUB get_bg_color():bg
+  bg := bg_color
+
+PUB get_fg_color():fg
+  fg := fg_color
+
+PUB get_ol_color():ol
+  ol := ol_color
+
+PUB set_ys(yt,yb)
+  ytop := yt
+  ybot := yb
+
+PUB set_xs(xt,xb)
+  xtop := xt
+  xbot := xb
+
+PUB set_coordinates(xt, yt, xb, yb)
+  xtop := xt
+  ytop := yt
+  xbot := xb
+  ybot := yb
+
+PUB get_coordinates() : xt, yt, xb, yb
+  xt := xtop
+  yt := ytop
+  xb := xbot
+  yb := ybot
+
+PUB set_border_width(bw)
+  border_width := bw
+
+
+''+--------------------------------------------------------------------+
+''   CONTAINER INTERFACE METHODS
+''+--------------------------------------------------------------------+
+PUB add_widget(enable_pointer, draw_pointer, check_event_pointer)
+  if widget_counter <= MAX_WIDGETS-1
+    widget_enable_method[widget_counter] := enable_pointer
+    widget_draw_method[widget_counter] := draw_pointer
+    widget_check_event_method[widget_counter] := check_event_pointer
+    widget_counter++
+
+
+
+''+--------------------------------------------------------------------+
+''   EVENT HANDLER METHODS
+''+--------------------------------------------------------------------+
+PUB plot_mode_event_handler(btn_id,val)
+
+  if val
+    trend.set_plot_mode(trend.PLOT_LINE)
+    text[VALUE_TXT].set_contents(@" ")
+    text[POSITION_TXT].set_contents(@" ")
+  else
+    trend.set_plot_mode(trend.PLOT_POINT)
+    if marker_enabled
+      util.set_value_ns(BYTE[data][trend.get_marker()],@value_text)
+      util.join_strings(@"V = ",@value_text,@buffer_text,12)
+      text[VALUE_TXT].set_contents(@buffer_text)
+      'text[VALUE_TXT].set_value(BYTE[data][max_data_values-1])
+
+  trend.draw()
+  text[VALUE_TXT].draw()
+  text[POSITION_TXT].draw()
+
+PUB marker_event_handler(btn_id,val)
+  if btn_id == LEFT_BTN AND marker_enabled
+    if trend.get_marker() == 0
+      trend.set_marker((MAX_DATA_VALUES - 1))
+    else
+      trend.move_marker_left()
+    trend.draw()
+    if marker_enabled
+      util.set_value_ns(trend.get_value(),@value_text)
+      util.join_strings(@"V = ",@value_text,@buffer_text,12)
+      text[VALUE_TXT].set_contents(@buffer_text)
+      text[VALUE_TXT].draw()
+
+      util.set_value_ns(max_data_values - trend.get_marker(),@value_text)
+      util.join_strings(@"d = ",@value_text,@buffer_text,12)
+      text[POSITION_TXT].set_contents(@buffer_text)
+      text[POSITION_TXT].draw()
+
+  if btn_id == RIGHT_BTN AND marker_enabled
+    if trend.get_marker() == (MAX_DATA_VALUES - 1)
+      trend.set_marker(0)
+    else
+      trend.move_marker_right()
+    trend.draw()
+    if marker_enabled
+      util.set_value_ns(trend.get_value(),@value_text)
+      util.join_strings(@"V = ",@value_text,@buffer_text,12)
+      text[VALUE_TXT].set_contents(@buffer_text)
+      text[VALUE_TXT].draw()
+
+      util.set_value_ns(max_data_values - trend.get_marker(),@value_text)
+      util.join_strings(@"d = ",@value_text,@buffer_text,12)
+      text[POSITION_TXT].set_contents(@buffer_text)
+      text[POSITION_TXT].draw()
+
+
+  if btn_id == MARKER_BTN
+    marker_enabled := val
+    trend.enable_marker(val)
+    trend.draw()
+    if NOT marker_enabled
+      text[VALUE_TXT].set_contents(@" ")
+      text[VALUE_TXT].draw()
+      text[POSITION_TXT].set_contents(@" ")
+      text[POSITION_TXT].draw()

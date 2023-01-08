@@ -1,0 +1,664 @@
+{
+  Dial Widget
+}
+CON
+  DEBOUNCE_TIMER = 500
+  MAX_CHARACTERS = 8
+
+  DEGREE   = $80000000 / 180 '32bit degree unit
+  RANGE_ANGLE = 210
+
+'Drawing Methods Constants
+  #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
+  #6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
+  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
+
+'Text align constants
+  #0, LEFT_ALIGN, CENTER_ALIGN, RIGHT_ALIGN
+
+VAR
+'Attributes
+  long id                       'Unique ID - (window index << 4)|(button index)
+  long bg_color                 'background color
+  long fg_color                 'foreground color
+  long ol_color                 'outline = border
+  word xtop                     'Top Left X (Pixel)
+  word ytop                     'Top Left Y (Pixel)
+  word xbot                     'Bottom Right X (Pixel)
+  word ybot                     'Bottom Right Y (Pixel)
+  byte border_width             'Border width in pixels
+
+'Method Pointers
+  long event_handler            'Default event handler method pointer
+  long drawing_method_pointer   'Drawing method pointers
+
+'Internal state variables
+  long last_time                'Stores touch event debouncer last time value
+  long value                    'Virtual value of the widget
+  byte configured               'Boolean flag to identify configured widgets in the window's list
+  byte enabled                  'Boolean flag to indicate widget can be drawn and can check for events
+  byte invert_border            'Boolean flag to invert border colors
+
+'Characters variables
+  byte contents[MAX_CHARACTERS+1] 'Should be 1 more than the displayed characters to account for the terminating zero
+  LONG string_pointer           'Hub address of string memory (addresses are LONG but memory access in hub is byte)
+  byte prev_contents[MAX_CHARACTERS+1]
+  LONG prev_pointer
+  byte font_size
+  byte padding
+  byte align                    '0 = LEFT, 1 = CENTER, 2 = RIGHT
+  byte compression              'compression factor for the text
+
+'Dial specific variables
+  'long fill_color
+  'long fill_hi_color            'Gauge fill color when value > hi threshold
+  'long fill_lo_color            'Gauge fill color when value < lo threshold
+  'long hi_threshold
+  'long lo_threshold
+  WORD range_limit              'Dial hand angle limits
+  long max_value
+  long min_value
+  WORD hand_buffer[16]          'Need a buffer of 24 bits x 24 bits to rotate the 16 x 16
+  word xc
+  word yc
+  byte radius
+  byte tick_length
+
+  byte header
+  byte show_val
+
+OBJ
+  color : "Colors"
+  util  : "Utilities"
+  neo   : "Neotimer"
+
+PUB null()
+
+''+--------------------------------------------------------------------+
+''   WIDGET INTERFACE METHODS
+''+--------------------------------------------------------------------+
+PUB set_enable(e)
+  if e
+    enabled := true
+  else
+    enabled := false
+
+PUB draw()| b, c, d, ticks , i
+''This method draws the graphical representation of this widget type
+  if enabled AND drawing_method_pointer <> 0
+    'FILL
+    LONG[drawing_method_pointer][FILL_RECTANGLE](xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
+
+    'BORDER
+    repeat b from 0 to border_width-1
+      LONG[drawing_method_pointer][DRAW_CIRCLE](xc,yc,radius-b,ol_color)
+
+    'TICKS
+    ticks := 12
+    repeat d from 0 to ticks-1
+      if d <= 7 OR d == 11
+        draw_tick(d * (360/ticks))
+
+    'ARROW
+    draw_hand(@hand, ol_color)
+
+    'VALUE
+    draw_value()
+
+
+PUB check_event(coord):is_mine |x, y
+  if configured AND enabled
+    x := coord.WORD[0]
+    y := coord.WORD[1]
+    if (x >= xtop AND x <= xbot) AND (y >= ytop AND y <= ybot)
+      is_mine := true
+
+      if event_handler <> 0
+        if (getms()-last_time) >= DEBOUNCE_TIMER          'debounce the event
+          event_handler(id)                               'call the event handler and pass along id of button
+          last_time := getms()                            'reset debounce timer
+
+PUB set_drawing_methods(METHOD_PTR)
+  drawing_method_pointer := METHOD_PTR
+
+
+''+--------------------------------------------------------------------+
+''   DIAL METHODS
+''+--------------------------------------------------------------------+
+PRI draw_hand(ptr, bgr)|x,y
+''Draws the hand icon that rotates around the center indicating the value
+''relative to the limits
+  util.rotate_image_rotxy(ptr, @hand_buffer, needle_angle())
+  x,y := util.pol_to_xy(radius - 20,90-needle_angle())
+  draw_16x16_icon(@hand_buffer, xc+x, yc+y)
+
+PRI draw_tick(angle)|xs,ys,xe,ye,x1,y1,x2,y2
+''Draws the ticks at the border circle
+  xs,ys := POLXY(radius - tick_length,angle*DEGREE)
+  xe,ye := POLXY(radius,angle*DEGREE)
+  x1 := xc + xs '(xbot - xtop)/2 + xs
+  y1 := yc + ys '(ybot - ytop)/2 + ys
+  x2 := xc + xe '(xbot - xtop)/2 + xe
+  y2 := yc + ye '(ybot - ytop)/2 + ye
+  LONG[drawing_method_pointer][DRAW_LINE](x1,y1,x2,y2,ol_color)
+  'debug(udec(radius-tick_length), udec(angle), sdec(xs), sdec(ys), sdec(xe), sdec(ye), udec(x1), udec(y1), udec(x2), udec(y2))
+
+PRI draw_value()|x, y, w
+''Draws the value at the center of the Dial
+  'Clear the previous number
+  w := util.get_text_width(prev_pointer, font_size, compression)
+  LONG[drawing_method_pointer][SET_WINDOW](xc-w/2, yc-8, xc+w/2+1, yc+8)
+  LONG[drawing_method_pointer][FILL_WINDOW](bg_color)
+  'Draw the new value
+  w := util.get_text_width(string_pointer, font_size, compression)
+  x := xc - (w/2)
+  y := yc - 8
+  util.draw_text(drawing_method_pointer,x,y,string_pointer,0,font_size,compression,bg_color,fg_color)
+
+
+DAT
+'Hand icon pixels
+'Modified LCD_Graphics_Driver PaintIcon for words instead of bytes
+hand
+ word  %00000000_00000000
+ word  %00000001_10000000
+ word  %00000011_11000000
+ word  %00000011_11000000
+ word  %00000111_11100000
+ word  %00001111_11110000
+ word  %00001111_11110000
+ word  %00011111_11111000
+ word  %00011111_11111000
+ word  %00111111_11111100
+ word  %00111111_11111100
+ word  %00000111_11100000
+ word  %00000111_11100000
+ word  %00000111_11100000
+ word  %00000111_11100000
+ word  %00000000_00000000
+
+
+PUB draw_16x16_icon(icon, x, y)
+''Draws a 16x16 icon
+  LONG[drawing_method_pointer][SET_FOREGROUND_COLOR](fg_color)
+  LONG[drawing_method_pointer][SET_BACKGROUND_COLOR](bg_color)
+
+  LONG[drawing_method_pointer][SET_WINDOW](x-8, y-8, x+8, y+8)
+  LONG[drawing_method_pointer][DRAW_ICON](icon, 16, 16)
+
+PRI copy_16x16_image_to_buffer()| hy
+''Copies hand image data to hand_buffer where it will be rotated
+  repeat hy from 0 to 15
+    hand_buffer.WORD[hy] := hand.WORD[hy]
+
+PRI debug_word_image(image)|y
+  debug(" ")
+  repeat y from 0 to 15
+    debug(ubin_word(WORD[image][y]))
+
+PRI get_point_value_16(x,y,ptr):val | b
+  val := WORD[ptr][y].[x]
+
+
+''+--------------------------------------------------------------------+
+''   CONFIGURATION METHODS
+''+--------------------------------------------------------------------+
+PUB configure(i, x, y, r, bg, fg, ol)
+  id := i
+
+  xc := x
+  yc := y
+  radius := 45 #> r <# 50       'Limit value of radius to have a consistent look
+
+  tick_length := 10
+
+  xtop := xc - r
+  ytop := yc - r
+  xbot := xc + r
+  ybot := yc + r
+
+  bg_color := bg
+  fg_color := fg
+  ol_color := ol
+  border_width := 1
+  invert_border := false
+
+  font_size := 2
+  compression := 6
+  padding := 1
+
+  align := CENTER_ALIGN
+  string_pointer := @contents
+  prev_pointer := @prev_contents
+  set_value(0)
+
+  copy_16x16_image_to_buffer()
+  range_limit := RANGE_ANGLE - 90 'phasing 90 degrees left so 0 is at the top center
+
+  configured := true
+  last_time := getms()
+
+PUB is_configured():conf
+  conf := configured
+
+PUB set_coordinates(xt, yt, xb, yb)
+  xtop := xt
+  ytop := yt
+  xbot := xb
+  ybot := yb
+
+PUB get_coordinates() : coords
+  coords.BYTE[0] := xtop
+  coords.BYTE[1] := ytop
+  coords.BYTE[2] := xbot
+  coords.BYTE[3] := ybot
+
+PUB set_colors(bg, fg, ol)
+  bg_color := bg
+  fg_color := fg
+  ol_color := ol
+
+PUB set_bg_color(bg)
+  bg_color := bg
+
+PUB set_fg_color(fg)
+  fg_color := fg
+
+PUB set_ol_color(ol)
+  ol_color := ol
+
+PUB get_colors(): bg, fg, ol
+  bg := bg_color
+  fg := fg_color
+  ol := ol_color
+
+PUB set_font_size(s)
+  font_size := 1 #> s <# 2
+
+''+--------------------------------------------------------------------+
+''   EVENT HANDLING METHODS
+''+--------------------------------------------------------------------+
+PUB set_event_handler(Method)
+  event_handler := Method    'Sets the default event handler of this object
+
+PUB call_event_handler(Method)
+  Method(id)                 'Calls a passed event handler
+
+
+''+--------------------------------------------------------------------+
+''   OTHER METHODS
+''+--------------------------------------------------------------------+
+PUB set_border_width(bw)
+  border_width := bw
+
+PUB set_contents(addr)|c,i
+  'Set new contents
+  repeat i from 0 to MAX_CHARACTERS-1                   'Reserve last character place for the terminating 0
+    c := BYTE[addr][i]
+    if c <> 0
+      contents[i] := c
+    else
+      quit
+  contents[i+1] := 0
+  'string_pointer := @contents
+
+PUB set_value(v)
+  util.set_value_ns(value, prev_pointer)
+  value := v
+  util.set_value_ns(value, string_pointer)
+
+PUB update(v)
+  clear_hand()
+  set_value(v)
+  draw_hand(@hand, ol_color)
+  draw_value()
+
+PUB clear_hand()|x,y
+  x,y := util.pol_to_xy(radius - 20,90-needle_angle())
+  LONG[drawing_method_pointer][SET_WINDOW](xc+x-8, yc+y-8, xc+x+8, yc+y+8)
+  LONG[drawing_method_pointer][FILL_WINDOW](bg_color)
+
+
+PRI needle_angle():a
+''Scales value to degrees range phased 90 degrees to the left
+''so 0 degrees is at the top center of the dial.
+  a := util.scale(value, 0, 100, -range_limit, range_limit)
+
+
+
+{
+clear_hand
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+
+ word  %00000000_00000000
+ word  %00000000_00000000
+ word  %00000011_11000000
+ word  %00000111_11100000
+ word  %00000111_11100000
+ word  %00001111_11110000
+ word  %00001110_01110000
+ word  %00011110_01111000
+ word  %00011100_00111000
+ word  %00111100_00111100
+ word  %00111100_00111100
+ word  %00111000_00011100
+ word  %00111000_00011100
+ word  %00110000_00001100
+ word  %00000000_00000000
+ word  %00000000_00000000
+
+ word  %00000000_00000000
+ word  %00000001_10000000
+ word  %00000011_11000000
+ word  %00000111_11100000
+ word  %00000111_11100000
+ word  %00001111_11110000
+ word  %00001110_01110000
+ word  %00011110_01111000
+ word  %00011100_00111000
+ word  %00111100_00111100
+ word  %00111100_00111100
+ word  %00111000_00011100
+ word  %01111000_00011110
+ word  %01110000_00001110
+ word  %01100000_00000110
+ word  %00000000_00000000
+
+ word  %00000000_00000000
+ word  %00000001_10000000
+ word  %00000011_11000000
+ word  %00000111_11100000
+ word  %00000111_11100000
+ word  %00001111_11110000
+ word  %00001111_11110000
+ word  %00011111_11111000
+ word  %00011111_11111000
+ word  %00011111_11111000
+ word  %00011111_11111000
+ word  %00001111_11110000
+ word  %00000111_11100000
+ word  %00000011_11000000
+ word  %00000000_00000000
+ word  %00000000_00000000
+
+
+
+
+hand_90
+ word  %00000000_00000000
+ word  %01110000_00000000
+ word  %01111110_00000000
+ word  %00111111_10000000
+ word  %00011111_11100000
+ word  %00000111_11111000
+ word  %00000000_11111100
+ word  %00000000_00111110
+ word  %00000000_00111110
+ word  %00000000_11111100
+ word  %00000111_11111000
+ word  %00011111_11100000
+ word  %00111111_10000000
+ word  %01111110_00000000
+ word  %01110000_00000000
+ word  %00000000_00000000
+
+hand_180
+ word  %00000000_00000000
+ word  %01100000_00000110
+ word  %01110000_00001110
+ word  %01111000_00011110
+ word  %00111000_00011100
+ word  %00111100_00111100
+ word  %00111100_00111100
+ word  %00011100_00111000
+ word  %00011110_01111000
+ word  %00001110_01110000
+ word  %00001111_11110000
+ word  %00000111_11100000
+ word  %00000111_11100000
+ word  %00000011_11000000
+ word  %00000001_10000000
+ word  %00000000_00000000
+
+hand_270
+ word  %00000000_00000000
+ word  %00000000_00001110
+ word  %00000000_01111110
+ word  %00000001_11111100
+ word  %00000111_11111000
+ word  %00011111_11100000
+ word  %00111111_00000000
+ word  %01111100_00000000
+ word  %01111100_00000000
+ word  %00111111_00000000
+ word  %00011111_11100000
+ word  %00000111_11111000
+ word  %00000001_11111100
+ word  %00000000_01111110
+ word  %00000000_00001110
+ word  %00000000_00000000
+}
+{
+ word  %00000001_10000000
+ word  %00000011_11000000
+ word  %00000011_11000000
+ word  %00000111_11100000
+ word  %00000111_11100000
+ word  %00001111_11110000
+ word  %00001110_01110000
+ word  %00011110_01111000
+ word  %00011100_00111000
+ word  %00111100_00111100
+ word  %00111100_00111100
+ word  %00111000_00011100
+ word  %01111000_00011110
+ word  %01110000_00001110
+ word  %11110000_00001111
+ word  %11100000_00000111
+
+
+ byte  %00000001,%10000000
+ byte  %00000011,%11000000
+ byte  %00000011,%11000000
+ byte  %00000111,%11100000
+ byte  %00000111,%11100000
+ byte  %00001111,%11110000
+ byte  %00001110,%01110000
+ byte  %00011110,%01111000
+ byte  %00011100,%00111000
+ byte  %00111100,%00111100
+ byte  %00111100,%00111100
+ byte  %00111000,%00011100
+ byte  %01111000,%00011110
+ byte  %01110000,%00001110
+ byte  %11110000,%00001111
+ byte  %11100000,%00000111
+}
+
+{
+PUB draw_hand_icon(icon)
+''Will draw a 16x16 icon that can be rotated
+''within a 24x24 buffer, effectively drawing
+''a 24x24 image
+
+  'debug("Drawing icon")
+  LONG[drawing_method_pointer][SET_FOREGROUND_COLOR](fg_color)
+  LONG[drawing_method_pointer][SET_BACKGROUND_COLOR](bg_color)
+
+  LONG[drawing_method_pointer][SET_WINDOW](xc-12, yc-12, xc+12, yc+12)
+  LONG[drawing_method_pointer][DRAW_ICON](icon, 24, 24)
+}
+
+{
+PRI rotate_point(x,y,angle,val):xr,yr, dx, dy, w, b
+  w := 16-1
+  xr, yr := util.rotate_point(x,y,angle)
+
+
+  if angle > 0 AND angle < 90
+    dy := QSIN(w,angle,360) - 3
+    dx := -4
+  elseif angle == 90
+    dy := w
+    dx := 0
+  elseif angle > 90 AND angle < 180
+    dy := w+2
+    dx := QCOS(-w,angle,360)-2
+  elseif angle == 180
+    dy := w
+    dx := w
+
+
+{
+  elseif angle >= 180 AND angle < 270
+    dy := QCOS(-15,angle,360)
+    dx := 15
+    debug(sdec(dy))
+}
+{  elseif angle >= 270 AND angle < 360
+    dy := 0
+    dx := QCOS(15,angle,360)
+}
+  'debug(sdec(angle), sdec(dx), sdec(dy), sdec(xr), sdec(yr))
+
+  'hand_buffer.WORD[4+yr+dy].[4+xr+dx] := val
+
+
+  yr := 0 #> (yr + dy) <# 23
+  xr := 0 #> (xr + dx) <# 23
+
+  b := yr * (w + 1) / 8
+  debug(sdec(x), sdec(y), sdec(xr), sdec(yr),sdec(b))
+  waitms(10)
+
+'  if b < 0
+'    debug(sdec(x), sdec(y), sdec(angle), sdec(yr), sdec(w),sdec(b))
+
+  if xr < 8
+    hand_buffer.Byte[b+2].[xr] := val
+  elseif xr < 16
+    hand_buffer.Byte[b+1].[xr] := val
+  elseif xr < 24
+    hand_buffer.Byte[b].[xr] := val
+}
+{
+PUB draw_hand_rotate(angle)|x,y,xb,yb,w,wb,val
+  'Rotate the icon bits
+  repeat y from 0 to 15
+    repeat x from 0 to 15
+      val := get_point_value_16(x,y,@hand_buffer)
+      rotate_point(x,y,angle,val)
+
+
+      '0 degrees
+      'xb,yb := util.rotate_point(x, y, 0)
+      'hand_buffer.WORD[yb].[xb] := val
+
+      '90 degrees
+      'xb,yb := util.rotate_point(x, y, 90)
+      'hand_buffer.WORD[yb+15].[xb] := val
+
+      '180 degrees
+      'xb,yb := util.rotate_point(x, y, 180)
+      'hand_buffer.WORD[yb+15].[xb+15] := val
+
+      '270 degrees
+      'xb,yb := util.rotate_point(x, y, 270)
+      'hand_buffer.WORD[yb].[xb+15] := val
+
+
+
+     'hand_buffer.WORD[y] := hand.Byte[2*y] + (hand.Byte[2*y + 1] << 8)
+
+  'debug_image(@hand_buffer)
+
+  'debug(sdec(QSIN(100,0,360)),sdec(QCOS(100,0,360)))
+  'debug(sdec(QSIN(100,90,360)),sdec(QCOS(100,90,360)))
+  'debug(sdec(QSIN(100,180,360)),sdec(QCOS(100,180,360)))
+  'debug(sdec(QSIN(100,270,360)),sdec(QCOS(100,270,360)))
+
+  draw_hand_icon(@hand_buffer)
+
+  'waitms(40)
+}
+{
+
+
+  debug_word_image(@hand_buffer)
+}
+
+{
+PRI debug_buffer_image(image)|y, b
+  debug(" ")
+  repeat b from 0 to 72 step 3
+    y := %10000000_00000000_00000000_00000000 + (hand_buffer.Byte[b+2])<<16 + (hand_buffer.Byte[b+1])<<8 + hand_buffer.Byte[b]
+    debug(ubin(y))
+}
+
+{
+PRI get_point_value_24(x,y,ptr):val | b
+''Gets point value within a 24x24 buffer
+  b := y * (24) / 8
+  if x < 8
+    val := Byte[ptr][b+2].[x]
+  elseif x < 16
+    val := Byte[ptr][b+1].[x]
+  elseif x < 23
+    val := Byte[ptr][b].[x]
+
+
+  'b1 := BYTE[ptr][
+  'val := WORD[ptr][y].[x]
+}
+
+
+
+
+{
+PRI draw_hand_angle(angle, bgr)|r, t, xs, ys, xe, ye
+  'Hand tip position
+  r := radius - tick_length - 10
+  xe,ye := util.pol_to_xy(r,angle)'POLXY(r,angle*DEGREE)
+
+  'Lines to create the hand triangle
+  repeat t from -45 to 45 step 5
+    xs,ys := util.pol_to_xy(5,angle+t)'POLXY(5,(angle+t)*DEGREE)
+    'xe,ye := POLXY(r--, angle*DEGREE)
+    LONG[drawing_method_pointer][DRAW_LINE](xs+xc,ys+yc,xe+xc,ye+yc,bgr)
+}
+
+
+{
+PRI copy_image_to_buffer_24()|b, hy, w, l, b1, b2, b3
+  'Starting byte of a 16x16 image, within the 24x24 buffer
+  b := 15
+
+  'Copy icon to hand_buffer (32x8 bits)
+  repeat hy from 0 to 15
+    w := hand.WORD[hy]
+    l := w << 4
+    b1 := l & $FF
+    b2 := l>>8 & $FF
+    b3 := l>>16 & $FF
+    hand_buffer.Byte[b+2] := b1
+    hand_buffer.Byte[b+1] := b2
+    hand_buffer.Byte[b] := b3
+    b := b + 3
+
+  debug_buffer_image(@hand_buffer)
+}

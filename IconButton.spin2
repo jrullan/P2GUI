@@ -1,0 +1,197 @@
+{
+  Button Object
+}
+CON
+  DEBOUNCE_TIMER = 500
+
+  #0, NORMAL_MODE, TOGGLE_MODE
+
+'Drawing Methods Constants
+  #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
+  #6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
+  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
+
+VAR
+'Attributes
+  long id                       'Unique ID - (window index << 4)|(button index)
+  long bg_color                 'background color
+  long fg_color                 'foreground color
+  long ol_color                 'outline = border
+  word xtop                     'Top Left X (Pixel)
+  word ytop                     'Top Left Y (Pixel)
+  word xbot                     'Bottom Right X (Pixel)
+  word ybot                     'Bottom Right Y (Pixel)
+  byte border_width             'Border width in pixels
+
+'Method Pointers
+  long event_handler            'Default event handler method pointer
+  long drawing_method_pointer   'Drawing method pointers
+
+'Internal state variables
+  long last_time                'Stores touch event debouncer last time value
+  byte configured               'Boolean flag to identify configured widgets in the window's list
+  byte enabled                  'Boolean flag to indicate widget can be drawn and can check for events
+  byte value                    'Virtual value of the widget
+  byte active_value
+  byte inactive_value
+
+'Button specific attributes
+  byte mode                     'Mode: 0 = Normal (no debouncing, value = active_value while event is true)
+                                'Mode: 1 = Toggle (debouncing, value toggles on successive events)
+  byte invert_border            'Boolean flag to invert border colors
+
+'Image
+  long image_pointer            'Address of image in hub memory
+  byte image_width
+  byte image_height
+  byte darken_factor
+
+
+OBJ
+  color : "Colors"
+  util : "Utilities"
+
+PUB null()
+
+''+--------------------------------------------------------------------+
+''   WIDGET INTERFACE METHODS
+''+--------------------------------------------------------------------+
+PUB set_enable(e)
+  if e
+    enabled := true
+  else
+    enabled := false
+
+PUB draw()| w, h, tw, th, x, y
+''This method draws the graphical representation of this widget type
+  if drawing_method_pointer <> 0
+    'FILL
+    'LONG[drawing_method_pointer][FILL_RECTANGLE](xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
+
+    'BORDER
+    util.draw_border(drawing_method_pointer,xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
+
+    'Image
+    if image_pointer <> 0
+      w := (xbot-xtop) - border_width*2
+      h := (ybot-ytop) - border_width*2
+
+      x := xtop + border_width + (w - image_width)/2
+      y := ytop + border_width + (h - image_height)/2
+
+      if value == active_value
+        util.draw_image(image_pointer, xtop+border_width, ytop+border_width, image_width, image_height, bg_color, drawing_method_pointer)
+      else
+        util.draw_darken_image(image_pointer, xtop+border_width, ytop+border_width, image_width, image_height, bg_color, darken_factor, drawing_method_pointer)
+
+PUB set_drawing_methods(METHOD_PTR)
+  drawing_method_pointer := METHOD_PTR
+
+PUB check_event(coord):is_mine | x, y
+  if configured AND enabled
+    x := coord.WORD[0]
+    y := coord.WORD[1]
+    if (x >= xtop AND x <= xbot) AND (y >= ytop AND y <= ybot)
+      is_mine := true
+      'debug("event at ", udec(id))
+
+      if (getms()-last_time) >= DEBOUNCE_TIMER          'debounce the event
+
+        if mode == TOGGLE_MODE              'Toggle or Event Mode
+          value := (value==inactive_value)?active_value:inactive_value
+
+        if event_handler <> 0
+          event_handler(id, value)   'call the event handler and pass along id of button and current value
+
+        last_time := getms()  'reset debounce timer
+
+
+''+--------------------------------------------------------------------+
+''   CONFIGURATION METHODS
+''+--------------------------------------------------------------------+
+PUB configure(i, xt, yt, bg, fg, ol)
+  if image_pointer <> 0
+    id := i
+    xtop := xt
+    ytop := yt
+    xbot := xt+image_width
+    ybot := yt+image_width
+    bg_color := bg
+    fg_color := fg
+    ol_color := ol
+    border_width := 0
+    active_value := true
+    inactive_value := false
+    darken_factor := 8
+    configured := true
+    last_time := getms()
+
+PUB is_configured():conf
+  conf := configured
+
+PUB set_coordinates(xt, yt, xb, yb)
+  xtop := xt
+  ytop := yt
+  xbot := xb
+  ybot := yb
+
+PUB get_coordinates() : coords
+  coords.BYTE[0] := xtop
+  coords.BYTE[1] := ytop
+  coords.BYTE[2] := xbot
+  coords.BYTE[3] := ybot
+
+PUB set_colors(bg, fg, ol)
+  bg_color := bg
+  fg_color := fg
+  ol_color := ol
+
+PUB get_colors(): bg, fg, ol
+  bg := bg_color
+  fg := fg_color
+  ol := ol_color
+
+
+''+--------------------------------------------------------------------+
+''   EVENT HANDLING METHODS
+''+--------------------------------------------------------------------+
+PUB set_event_handler(Method)
+  event_handler := Method    'Sets the default event handler of this object
+
+PUB call_event_handler(Method)
+  Method(id)                    'Calls a passed event handler
+
+
+''+--------------------------------------------------------------------+
+''   OTHER METHODS
+''+--------------------------------------------------------------------+
+PUB set_values(a,i)
+  active_value   := a
+  inactive_value := i
+
+PUB set_value(v)
+  value := v
+
+PUB get_value():v
+  v := value
+
+PUB set_invert(i)
+  invert_border := i
+
+PUB set_mode(m)
+  mode := m
+
+PUB set_border_width(bw)
+  border_width := bw
+
+
+''+--------------------------------------------------------------------+
+''   IMAGE METHODS
+''+--------------------------------------------------------------------+
+PUB set_image(img, w, h)
+  image_pointer := img
+  image_width := w
+  image_height := h
+
+PUB set_darken_factor(f)
+  darken_factor := f

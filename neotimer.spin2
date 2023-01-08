@@ -1,0 +1,265 @@
+'' =================================================================================================
+''
+''   File....... neotimer.spin2
+''   Purpose.... Provide non-blocking versatile timer to implement delays, periodic triggers
+''               or debouncing
+''   Author..... Jose Rullan
+''               Copyright (c) 2021 Jose Rullan
+''               -- see below for terms of use
+''   E-mail..... jerullan@gmail.com
+''   Created.... 18 FEB 2021
+''
+'' =================================================================================================
+
+{
+  Neotimer's Implementation in Propeller 2
+
+  Non-blocking timer object originally created for Arduino.
+
+  When you use a waitms() function in a spin program,
+  the processor stops everything it is doing until this delay is completed.
+  That is called a blocking delay, because it blocks the processor until it finishes.
+
+  Many times we don't want this to happen.
+  This timer provides a way to use time delays without
+  blocking the processor, so it can do other things while the timer ends up.
+  This is called a non-blocking delay timer.
+
+  The timer provides basic functionality to implement different ways of timing in a sketch.
+  You can use the timer in the following ways:
+
+        A) Start-Stop-Restart Timer - You can start, stop and restart the timer until done.
+
+           start()   will reset the time (counting time) and set is_started and is_waiting true.
+           stop()    will set is_started and is_waiting false.
+                     It will also return the elapsed milliseconds since it was started
+           restart() will set the timer to is_started and is_waiting but will not reset the time.
+
+        B) Periodic trigger - The following example will toggle pin 56 every 500ms
+
+            timer1.init(500)
+            repeat
+                if(timer1.repeat_execution())
+                  pintoggle(56)
+
+        C) Debouncer for signals - The following example shows how to debounce a signal
+           coming from pin 10. Will only return true if more than 50ms have passed since
+           last time it was read.
+
+            pushbutton := 10
+            timer1.init(50)
+            repeat
+                if(timer1.debounce( pinread(pushbutton) ))
+                  pintoggle(56)
+
+}
+
+CON
+  NEOTIMER_UNLIMITED = -1
+
+VAR
+  long time           'Time preset
+  long last           'Last snapshot of the elapsed time
+  long repetitions    'Quantity of repetitions for repeat_execution
+  byte is_started     'Internal state variable that indicates timer has started
+  byte is_waiting     'Internal state variable that indicates timer is running but has not reached the preset
+  byte is_done        'Internal state variable that indicates timer has reached the preset
+
+PUB null()  'Not a top object
+
+'=========================================================
+PUB init(ms)            'Initialize timer with preset time
+'=========================================================
+  time := ms
+  is_waiting := false
+  repetitions := NEOTIMER_UNLIMITED
+  debug("Neotimer initialized")
+
+
+'=========================================================
+PUB start()            'Starts the timer (resets it)
+'=========================================================
+  reset()
+  is_started := true
+  is_waiting := true
+
+
+'=========================================================
+PUB stop() : elapsed   'Stops the timer (returns elapsed)
+'=========================================================
+  is_started := false
+  is_waiting := false
+  elapsed := get_ellapsed()
+
+
+'=========================================================
+PUB reset()            'Resets the timer (stops it)
+'=========================================================
+  stop()
+  last := getms()
+  is_done := false
+
+
+'=========================================================
+PUB restart()          'Restarts the timer
+'=========================================================
+  if (NOT is_done)
+    is_started := true
+    is_waiting := true
+
+
+'=========================================================
+PUB started() : result 'Returns is_started
+'=========================================================
+  result := is_started
+
+
+'=========================================================
+PUB waiting() : result 'Returns is_waiting
+'=========================================================
+  result := (is_started AND NOT is_done) ? true : false
+
+
+'=========================================================
+PUB done() : result    'Returns true if timer is done
+'=========================================================
+  if(NOT is_started)
+    result := false
+    return
+
+  if(getms()-last >= time)
+    is_done := true
+    is_waiting := false
+    result := true
+    return
+
+  result := false
+
+
+'=========================================================
+PUB done_one_shot() : result
+'Returns true if timer is done just once
+'=========================================================
+  if(is_done OR NOT is_started)
+    result := false
+    return
+
+  if(getms()-last >= time)
+    is_done := true
+    is_waiting := false
+    result := true
+    return
+
+  result := false
+
+
+'=========================================================
+PUB repeat_execution() : result
+{ Returns true if timer is done, and resets it
+  Used to repeat the execution of some code indefinetely }
+'=========================================================
+  if(done())
+    reset()
+    result := true
+    return
+
+  if(NOT is_started)
+    last := getms()
+    is_started := true
+    is_waiting := true
+
+  result := false
+
+
+'=========================================================
+PUB repeat_execution_times(times) : result
+{ Returns true if timer is done, and resets it
+  Used to repeat the execution of some code X times }
+'=========================================================
+  if(times <> NEOTIMER_UNLIMITED)
+
+    if(repetitions == NEOTIMER_UNLIMITED)
+      repetitions := times
+
+    if(repetitions == 0)
+      result := false
+      return
+
+    if(repeat_execution())
+      repetitions--
+      result := true
+      return
+
+    result := false
+
+  result := repeat_execution()
+
+
+'=========================================================
+PUB repeat_execution_period(times,period) : result
+{ Returns true if timer is done, and resets it
+  Used to repeat the execution of some code X times
+  with variable period }
+'=========================================================
+  time := period
+  result := repeat_execution_times(times)
+
+
+'=========================================================
+PUB reset_repetitions()'Resets repetitions (no repetitions)
+'=========================================================
+  repetitions := NEOTIMER_UNLIMITED
+
+
+'=========================================================
+PUB debounce(signal) : result
+{ Used to debounce a signal }
+'=========================================================
+  if(done() AND signal)
+    start()
+    result := true
+  result := false
+
+
+'=========================================================
+PUB get_ellapsed() : elapsed
+'=========================================================
+  elapsed := getms() - last
+
+
+'=========================================================
+PUB get_time() : ms
+'=========================================================
+  ms := time
+
+
+'=========================================================
+PUB set_time(ms)
+'=========================================================
+  time := ms
+
+con { license }
+
+{{
+
+  Terms of Use: MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+}}

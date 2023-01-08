@@ -1,0 +1,1227 @@
+'' +--------------------------------------------------------------------------+
+'' | Cluso's Color LCD Demo with optional Touch Support                V3.0   |
+'' +--------------------------------------------------------------------------+
+'' |  Authors:       (c)2015-2021  "Cluso99" (Ray Rodrick)                    |
+'' |                    Original code for 1.44in 128x128 ILI9163 color LCD    |
+'' |                    Add code for 4.0in 480x320 ST7796S color LCD          |
+'' |                 (c)2021       "mwroberts" (Mike Roberts)                 |
+'' |                    Add code for XPT2046 Touch Panel support              |
+'' |                 (c)2021       @"Greg LaPolla" (Greg LaPolla)             |
+'' |                    Modify for 2.4in & 3.2in 320x240 ILI9341 Touch LCD    |
+'' |                 (c)2021       "ManAtWork" (Nicolas Benezan)              |
+'' |                    Smart pin support, Touch Panel code -> PASM
+'' |                 (c)2021       "Cluso99" (Ray Rodrick)                    |
+'' |                    Combine to support all above in original program      |
+'' |  Modifications:                                                          |
+'' |  License:       MIT License - See end of file for terms of use           |
+'' +--------------------------------------------------------------------------+
+'' RR20201105  100  copied from LCD_ILI9163_SPI_v200.spin2
+'' RR20201101  2.01  RetroBlade2 test on P0-7
+'' RR20201106  202   window parameters 8b -> 16b for cs, rs, ce, re
+''                   pixel count 16b > 32b
+'' RR20201107  203  wkg
+'' RR20201107 V2.0  release
+'' RR20201107  204  use drvh/l rather than dira/outa to drive io pins
+''             205  tweek lines/boxes demo
+''                  bug: circle problem when x or y >~170 (eg larger/position of circles) maths???
+''             206  RetroBlade2 P42-47
+'' RR20201108  207  fix circle bug
+'' RR20201110  208  add 80*40 and 60*40 text demos
+'' +--------------------------------------------------------------------------+
+'' RR          210-230+ are forked versions for text only teminals
+'' +--------------------------------------------------------------------------+
+'' RR20210305  290  prep for v3.0 release
+'' MR20210130         added touchscreen for XPT2046 (Mike Roberts)
+'' RR20210305         added support for for 320x240 LCD (Greg LaPolla)
+''                    allow (parameterised) multiple LCD resolution/sizes, optional Touch
+'' RR20210307  292  tweek code to make universal graphics, text & touch
+'' RR20210308  293  pass parameters in start:  PUB Start(pixels_x, pixels_y, rotate, font_x, font_y, touch_on)
+''             294  check with 1.44in 128x128 ILI9163 LCD
+'' RR20210309  295  fix clock 10/11/12 display
+'' +--------------------------------------------------------------------------+
+'' RR20210309 v3.00 release
+'' NB20210827  310  SPI with smart pins, clock timing fixed
+'' NB20210828  311  touch panel code moved to PASM cog, font data -> hub RAM
+'' NB20210903  312  support combined SPI pins for LCD + touch controller
+'' NB20210903  313  button list added, buttonIsHit() window check
+'' NB20220725  320  4bpp bitmap fetch added
+'' NB20221111  321  variable pinout instead of CONs
+'' NB20221112  322  variable font size instead of only 6x8 or 8x8
+
+CON
+
+'  baud                  = 115_200
+
+
+'' +--------------------------------------------------------------------------+
+'' |  Set the I/O pins with SetLcdPins() and SetTouchPins() if required       |
+'' |    Don't forget to select your screen resolution                         |
+'' |      & touch screen options in your calling (demo) program.              |
+'' +--------------------------------------------------------------------------+
+' Rules for pin numbers:
+' * SDA and CLK must not be more than +/-3 apart
+' * TCLK and TDIN must not be more than +/-3 apart
+' * TCLK and TDO must not be more than +/-3 apart
+' * RST and LED can be combined (assigned the same number)
+' * CLK and TCLK can be combined
+' * SDA and TDIN can be combined
+' * SDO and TDO can be combined
+{{
+' LCD Connector J1: 1.44in 128x128 ILI9163 LCD pinout for use with RetroBlade3. Adjust to suit your P2 board.
+  PIN_3V3               = 7     {O}       ' 3v3 pwr supplied by prop pin
+  PIN_GND               = 6     {O}       ' GND pwr supplied by prop pin
+  PIN_CE                = 5     {O}         ' Serial clock enable pin
+  PIN_RST               = 4     {O}         ' Reset pin
+  PIN_DC                = 3     {O}         ' Data / Command selection pin
+  PIN_SDA               = 2     {O}         ' Serial Data pin
+  PIN_CLK               = 1     {O}         ' Serial Clock pin
+  PIN_LED               = 0     {O}         ' LED backlight enable pin
+  PIN_TCLK              = -1                ' disable touch
+
+' LCD Connector J2: 4.0in/3.2in ST7796S/ILI9341 pinout for use with RetroBlade3. Adjust to suit your P2 board.
+  PIN_3V3               = -1              ' 3v3 ~59mA or 5V ~113mA power supplied by power supply
+  PIN_GND               = -1              ' GND pwr supplied by power supply
+  PIN_CE                = 47    {O}         ' Serial clock enable pin
+  PIN_RST               = 46    {O}         ' Reset pin (can be reset by software)
+  PIN_DC                = 45    {O}         ' Data / Command selection pin
+  PIN_SDA               = 44    {O}         ' Serial Data MOSI pin
+  PIN_CLK               = 43    {O}         ' Serial Clock pin
+  PIN_LED               = 42    {O}         ' LED backlight enable pin (hi to enable - ~2.4mA)
+  PIN_SDO               = 41    {I}         ' Serial Data MISO pin (not used)
+
+
+  PIN_TCLK              = 40    {O}         '\ Touch: Serial Clock pin
+  PIN_TCS               = 39    {O}         '|        Serial clock enable pin
+  PIN_TDIN              = 38    {O}         '|        Serial Data In  MOSI pin
+  PIN_TDO               = 37    {I}         '|        Serial Data Out MISO pin
+  PIN_TIRQ              = 36    {I}         '/        Serial Interrupt out pin
+
+}}
+
+' These are the values for the 4.0in 320x480 ST7796S LCD & 3.2in 240x320 ILI9341 LCD.
+' Easiest to select by trial and error. Other LCD's may vary.
+  LCD_rotate_0          = $00               '\   0 degrees
+  LCD_rotate_90         = $A0               '|  90 degrees
+  LCD_rotate_180        = $C0               '| 180 degrees
+  LCD_rotate_270        = $60               '/ 270 degrees
+  LCD_mirror_0          = $40               '\   0 degrees mirror
+  LCD_mirror_90         = $20               '|  90 degrees mirror (eg 4.0" is rotated 90deg and mirrored)
+  LCD_mirror_180        = $80               '| 180 degrees mirror
+  LCD_mirror_270        = $E0               '/ 270 degrees mirror
+
+
+' Most driver ICs seem to use these registers...
+' ST7769S, IL9341, ILI9341, ILI9488, ILI9163,
+  LCD_NOP               = $00
+  LCD_SW_RESET          = $01
+  LCD_SLEEP_ON          = $10
+  LCD_SLEEP_OFF         = $11
+  LCD_PARTIAL           = $12
+  LCD_NORMAL            = $13
+  LCD_INVERSION_OFF     = $20
+  LCD_INVERSION_ON      = $21
+  LCD_GAMMA_SET         = $26
+  LCD_DISPLAY_OFF       = $28
+  LCD_DISPLAY_ON        = $29
+  LCD_COL_ADR           = $2A
+  LCD_ROW_ADR           = $2B
+  LCD_RAM_WRITE         = $2C
+  LCD_COLOR_SPACE       = $2D   '4K/65K/262K
+' LCD_RAMRD             = $2E
+  LCD_MADCTR            = $36   'Mem Addr Contol (rotate screen)
+  LCD_PIXEL_FORMAT      = $3A
+  LCD_FRAME_CTL1        = $B1
+  LCD_INVERSION_CTL     = $B4
+  LCD_POWER_CTL1        = $C0
+  LCD_POWER_CTL2        = $C1
+  LCD_VCOM_CTL1         = $C5
+  LCD_VCOM_OFFSET       = $C7
+  LCD_POS_GAMMA         = $E0
+  LCD_NEG_GAMMA         = $E1
+  LCD_GAMMA_RS          = $F2
+' LCD_ALL_ON            = $A4
+' LCD_ALL_OFF           = $A5
+
+' BGR 5+6+5 16bits/pixel (RGB reversed)
+  black                 = $0000
+  white                 = $FFFF
+  blue                  = $F800
+  green                 = $07E0
+  red                   = $001F
+  yellow                = red+green
+  purple                = red+blue
+  cyan                  = green+blue
+  grey                  = $7BEF
+  orange                =  0<<11 + 31<<5 + 31
+  brown                 =  0<<11 + 20<<5 + 20
+  brightRed             = 10<<11 + 20<<5 + 31
+  brightGreen           = 10<<11 + 63<<5 + 10
+  brightBlue            = 31<<11 + 20<<5 + 10
+  grey1                 =  8<<11 + 63<<5 +  8
+  grey2                 = 16<<11 + 63<<5 + 16
+  grey3                 = 24<<11 + 48<<5 + 24
+
+  LF                    = 10
+  CR                    = 13
+
+  max_buttons = 10
+
+OBJ
+'  term : "jm_fullduplexserial"                          ' serial driver
+
+'<--------------------------->
+'<----- Added for P2GUI ----->
+'<--------------------------->
+  'font16 : "LCD_VarSizeFont"
+  'font8  : "LCD_FixedFont"
+  fonts : "fonts"
+'<--------------------------->
+
+VAR
+  long  lcdcog                                          ' lcd pasm cog+1
+  long  sercog                                          ' serial pasm cog+1
+
+  long  width, height                                   ' lcd screen width/height (pixels)
+  long  touchscreen                                     ' true = touch screen enable
+  long  fontwidth, fontheight                           ' font size 6x8 or 8x8 (pixels)
+  long  textcols, textrows                              ' chars on line, and lines on screen
+  long  curx, cury                                      ' cursor position
+  long  cal_edge                                        ' touch screen calibration from edge of screen (pixels)
+  long  cal_topx, cal_topy                              ' touch screen calibration "x" top    column, "y" top    row
+  long  cal_botx, cal_boty                              '                          "x" bottom column, "y" bottom row
+  ' touch screen calibration data
+  long  cal_offx, cal_offy                              ' touch screen ADC value offset x/y
+  long  cal_divx, cal_divy                              ' scaling factor ADC value to pixels = width/divx and height/divy
+  byte  calibrated
+'' +--------------------------------------------------------------------------+
+
+  word  but_xs[max_buttons]                             ' buttons left window limit
+  word  but_xe[max_buttons]                             ' buttons right window limit
+  word  but_ys[max_buttons]                             ' buttons top window limit
+  word  but_ye[max_buttons]                             ' buttons bottom window limit
+  long  num_buttons
+
+'<--------------------------->
+'<----- Added for P2GUI ----->
+'<--------------------------->
+  long rotation
+  long last_x
+  long last_y
+  long last_time
+'<--------------------------->
+
+DAT
+''+-----------------------------------------------------+
+''| MAILBOX PARAMETERS: Between Spin/Pasm               |
+''+-----------------------------------------------------+
+' mailbox(es) for PASM cog
+mailbox         long    0                               '  \ .... (32b)       command + optional param(s)
+'cmd            byte    0                               '  | cmd    (8b)        command
+'spare          byte    0                               '  | spare  (8b)        ---
+'param          word    0                               '  / param  (16b/8b)    16/8/0b param
+mailbox1        long    0                               '  \ .... (32b)       optional additional param(s)
+'               long    0                               '  / ??     (32b)       32/16/8/0b param(s)
+mailbox2s       long    $0000_0000                      '  \      (32b)       screen window in pixels...
+'cs             word    0                               '  | xs     (16b)       column start
+'rs             word    0                               '  | ys     (16b)       row    start
+mailbox2e       long    $0000_0000                      '  \      (32b)       screen window in pixels...
+'ce             word    width-1                         '  | xe     (16b)       column end
+'re             word    height-1                        '  / ye     (16b)       row    end
+mailbox3        long    blue << 16 | black              '  \      (32b)       screen colors rgb(16b)...
+'fgcolor        word    blue                            '  | fgcolor(16b)       foreground color
+'bgcolor        word    black                           '  / bgcolor(16b)       background color
+mailbox4        long    0                               '  ] pixelcnt(32b)    pixel count (for window fills)
+mailbox5        long    0                               '  ] touchscreen LSW=x MSW=y
+
+''+-----------------------------------------------------+
+''| SPIN OBJECT USER INTERFACE ROUTINES                 |
+''+-----------------------------------------------------+
+PUB Start(pixels_x, pixels_y, rotate, touch_on) : result
+' Start LCD cog and initialise
+' It is assumed that the pin numbers are already set.
+' If you need a diffenrent pinout call SetLcdPins() and SetTouchPins() before.
+
+  width       := pixels_x                               ' lcd screen width  (pixels)
+  height      := pixels_y                               '            height (pixels)
+  touchscreen := touch_on                               ' true = touch screen enabled
+  cal_edge    := width / 16                             ' touch screen calibration from edge of screen (pixels)
+  cal_topx    := cal_edge                               ' touch screen calibration "x" top column
+  cal_topy    := cal_edge                               '                                  row
+  cal_botx    := width  - cal_edge                      '                           bottom column
+  cal_boty    := height - cal_edge                      '                                  row
+  divCLK      := clkfreq / 20_000_000                   ' adjust smart pin base period to actual frequency
+
+  debug(sdec(PIN_CLK-PIN_SDA))
+  debug(sdec(PIN_TCLK-PIN_TDIN))
+  debug(sdec(PIN_TCLK-PIN_TDO))
+
+  PatchMode(@modeLTXD, PIN_CLK - PIN_SDA)
+  PatchMode(@modeTTXD, PIN_TCLK - PIN_TDIN)
+  PatchMode(@modeTRXD, PIN_TCLK - PIN_TDO)
+  delay50ms   := clkfreq / 1000 * 50                    ' adjust delay to actual frequency
+  if touch_on
+    Start_TS ()
+  else
+    PIN_TCLK := -1 ' disable flag -> PASM
+{{
+  ' for debugging...
+  waitms(3000)
+  sercog := term.tstart(baud)
+  term.fstr0(string("\r\nLCD text and graphics demo\r\n"))
+}}
+
+'<--------------------------->
+'<----- Added for P2GUI ----->
+'<--------------------------->
+  rotation := rotate
+  'font16.MakeFont(@font12x16,12,16)
+'<--------------------------->
+
+' Start the PASM (LCD Driver) cog & Initialised the LCD
+  lcdInit(rotate)
+  clearScreen()
+  return(lcdcog)                                        ' returns cog+1 if successful
+
+'<--------------------------->
+'<----- Added for P2GUI ----->
+'<--------------------------->
+PUB SelectFontSize(size)
+  if size == 1
+    'SetFont(font8.Get8x8font(),8,8)
+    SetFont(fonts.getFont(1),8,8)
+  if size == 2
+    'SetFont(font16.Get16x16font(),16,16)
+    'SetFont(@font12x16,12,16)
+    SetFont(fonts.getFont(2),8,16)
+
+
+PUB set_calibration(divx, divy, offx, offy)
+  cal_divx := divx
+  cal_divy := divy
+  cal_offx := offx
+  cal_offy := offy
+  calibrated := true
+'<--------------------------->
+
+PUB SetFont (dataPtr, font_x, font_y)
+  fontwidth   := font_x                                 ' font width        (pixels)
+  fontheight  := font_y                                 '                   (pixels)
+  textcols    := width  / fontwidth                     ' char columns on line
+  textrows    := height / fontheight                    ' char rows    on screen
+  WaitMailbox()
+  mailbox1 := dataPtr                                   ' pixel data pointer
+  mailbox2s:= (font_x<<16) | font_y
+  mailbox4 := (font_x*font_y+7)/8                       ' byte offset char to char
+  mailbox  := $83_00_0000
+
+PRI PatchMode(modePtr, dist)
+' patch smart pin mode for B-A distance
+  'debug(sdec(dist))
+
+  if dist > 3 OR dist < -3
+    'debug ("pin mapping violates rules!")
+    repeat
+  long[modePtr]|= (dist & %111)<<24       ' P_MINUS3_B..P_PLUS3_B
+
+PRI Start_TS()
+' Start touchscreen -> most actions moved to PASM cog
+  if touchscreen
+    WrPin(PIN_TIRQ, P_FILT2_AB) ' hardware debounce ~16ms
+    calibrated:= false
+
+PUB Stop()
+' Stop the PASM (LCD Driver) cog
+  if lcdcog
+    cogstop(lcdcog~ - 1)
+  if sercog
+    cogstop(sercog~ - 1)
+
+PUB SetLcdPins(ce, rst, dc, sda, clk, led, v3, gnd)
+' needs to be called before Start()
+  PIN_3V3:= v3
+  PIN_GND:= gnd
+  PIN_CE := ce
+  PIN_RST:= rst
+  PIN_DC := dc
+  PIN_SDA:= sda
+  PIN_CLK:= clk
+  PIN_LED:= led
+
+PUB SetTouchPins(clk, cs, din, do, irq)
+' needs to be called before Start()
+  PIN_TCLK:= clk
+  PIN_TCS := cs
+  PIN_TDIN:= din
+  PIN_TDO := do
+  PIN_TIRQ:= irq
+
+PRI WaitMailbox()
+  repeat while mailbox <> 0
+
+''+-----------------------------------------------------+
+''| User High Level Calls                               |
+''+-----------------------------------------------------+
+PUB clearScreen()
+' Clear Screen
+  setWindow(0,0,width-1,height-1)                       ' full screen 480*320/320x240/128x128
+  fillWindow(mailbox3 & $FFFF)                          ' clear=bgcolor
+
+PUB setFGcolor(rgb)
+' Set foreground color
+  WaitMailbox()
+  mailbox3 := (rgb << 16) | (mailbox3 & $FFFF)
+
+PUB setBGcolor(rgb)
+' Set background color
+  WaitMailbox()
+  mailbox3 := (mailbox3 & $FFFF_0000) | (rgb & $FFFF)
+
+PUB setWindow(xs, ys, xe, ye)
+' Set Screen Window (column start, row start, column end, row end)
+  curx:= xs
+  cury:= ys
+  WaitMailbox()
+  mailbox2s:= (xs<<16) | ys                              ' xs, ys
+  mailbox2e:= (xe<<16) | ye                              ' xe, ye
+  mailbox4 := (xe - xs +1)*(ye - ys +1)                  ' calc no. of pixels
+  mailbox  := $81_00_0000
+
+PUB fillWindow(rgb) | n, xs, ys, xe, ye
+' Fill Window/Rectangle (rgb color)
+  WaitMailbox()
+  mailbox1 := (rgb << 16)                               ' rgb color to be set in window
+  mailbox := $82_00_0000
+
+PUB setColRow(xs, ys)
+' Set Screen Column/Row (for subsequent DrawChar6/8x8)
+  WaitMailbox()
+  curx:= xs
+  cury:= ys
+  mailbox2s := (xs<<16) | ys                            ' update new (xs, ys, ?, ?) - no need to setWindow!
+
+PUB drawChar(char) | xs, ys
+' Draw (current font) char @ (xs,ys), then updates (xs,ys,xe,ye) - uses fgcolor & bgcolor setting
+
+  'get current xs, ys and set xe, ye
+  setWindow(curx, cury, curx+fontwidth-1, cury+fontheight-1)
+  WaitMailbox()
+  mailbox  := $84_00_0000 | (char & $7F)                ' paints pixels
+  advanceCursor(fontwidth)
+
+PUB drawStr(str)
+  repeat while byte[str] <> 0
+    DrawChar(byte[str++])
+
+PUB drawString(col,row,str)
+' Draw a 0 terminated string at col,row
+  setColRow(col, row)
+  drawStr(str)
+
+PUB DrawIcon (imagePtr, w, h)
+  setWindow(curx, cury, curx+w-1, cury+h-1)
+  WaitMailbox()
+  mailbox1 := imagePtr
+  mailbox  := $85_00_0000
+  advanceCursor(w)
+
+''+-----------------------------------------------------+
+''| High Level Drivers                                  |
+''+-----------------------------------------------------+
+PUB drawPixel(x, y, rgb) | i
+' Draw 1 pixel
+  setWindow(x, y, x, y)                             ' 1 pixel
+  fillWindow(rgb)
+
+PUB drawLine(xs, ys, xe, ye, rgb) | i, x, y, dx, dy
+' Draw Line - start co-ords, end co-ords, color
+  dx:= xe - xs
+  dy:= ye - ys
+  if ABS(dx) > ABS(dy)   'plot incrementing x axis
+    repeat i from 0 to dx
+      y := (dy*i + dx/2)/dx
+      drawPixel(xs+i, ys+y, rgb)
+  else 'plot incrementing y axis
+    repeat i from 0 to dy
+      x := (dx*i + dy/2)/dy
+      drawPixel(xs+x, ys+i, rgb)
+
+PUB drawCircle(xc, yc, r, rgb) | x, y
+' Draw Circle d^2 = x^2 + y^2; y = SQRT(d^2 - x^2) (Pythagoras theorum)
+  repeat x from 0 to r
+    y := SQRT((r*r + r/2) - (x*x))
+    if y < x
+      quit ' octant finished
+    'plot 4 quadrants for incrementing x axis
+    drawPixel(xc+x, yc+y, rgb)
+    drawPixel(xc-x, yc+y, rgb)
+    drawPixel(xc+x, yc-y, rgb)
+    drawPixel(xc-x, yc-y, rgb)
+    'plot 4 quadrants for incrementing y axis (fills in more dots on circle)
+    drawPixel(xc+y, yc+x, rgb)
+    drawPixel(xc-y, yc+x, rgb)
+    drawPixel(xc+y, yc-x, rgb)
+    drawPixel(xc-y, yc-x, rgb)
+
+PUB fillRectangle(xs, ys, xe, ye, rgb)
+  setWindow(xs, ys, xe, ye)
+  fillWindow(rgb)
+
+PUB drawRectangle(xs, ys, xe, ye, rgb) | i
+  'plot two horizontal lines
+  repeat i from 0 to xe-xs
+    drawPixel(xs+i, ys, rgb)
+    drawPixel(xs+i, ye, rgb)
+  'plot incrementing y axis
+  repeat i from 0 to ye-ys
+    drawPixel(xs, ys+i, rgb)
+    drawPixel(xe, ys+i, rgb)
+
+PUB CopyBitmap4bpp (bmapPtr, palettePtr, x, y, w, h) | oldCol
+' bmapPtr = pointer to bitmap data, 1 nibble per pixel
+' palettePtr = pointer to palette, 16 words of 5:6:5 RGB color data
+  setWindow (x, y, x+w-1, y+h-1)
+  oldCol:= mailbox3
+  WaitMailbox()
+  mailbox1:= bmapPtr
+  mailbox3:= palettePtr
+  mailbox := $86_00_0000
+  WaitMailbox()
+  mailbox3:= oldCol
+
+PUB ShrinkBitmap4bpp (bmapPtr, palettePtr, x, y, w, h) | oldCol
+' bmapPtr = pointer to bitmap data, 1 nibble per pixel
+' palettePtr = pointer to palette, 16 words of 5:6:5 RGB color data
+' blends 4 adjacent pixels of source bitmap into 1 display pixel
+  setWindow (x, y, x+w-1, y+h-1)
+  oldCol:= mailbox3
+  WaitMailbox()
+  mailbox1:= bmapPtr
+  mailbox2e:= w                 ' dst pixels per row = src bytes per row
+  mailbox3:= palettePtr
+  mailbox := $87_00_0000
+  WaitMailbox()
+  mailbox3:= oldCol
+
+PRI advanceCursor(dx)
+  'update xs, ys, xe, ye to next position
+  WaitMailbox()
+  curx += dx
+  if curx >=  width                                       ' char pixels per line 120/126 (20/21 chars)
+    curx:= 0
+    cury += fontheight
+    if cury >= height                                     ' (height // 8) * 8 not reqd
+     cury:= 0
+  mailbox2s := curx << 16 | cury                          ' update new (xs, ys, xe, ye) - no need to setWindow!
+
+
+''+-----------------------------------------------------+
+''| Touch Screen Calls                                  |
+''+-----------------------------------------------------+
+PUB addButton (x, y, w, h) : n
+' takes top left X/Y coordinates and width/height
+' returns number of button (n>0 if successful)
+  if num_buttons>= max_buttons
+    return 0
+  but_xs[num_buttons]:= x
+  but_xe[num_buttons]:= x + w
+  but_ys[num_buttons]:= y
+  but_ye[num_buttons]:= y + h
+  num_buttons++
+
+PUB clearButtons ()
+' deletes the list of all buttons
+  num_buttons:= 0
+
+PUB buttonIsHit (x, y): n
+' returns number of button hit or 0 if none
+  repeat n from 0 to num_buttons-1
+    if x >= but_xs[n] AND x < but_xe[n] AND y >= but_ys[n] AND y < but_ye[n]
+      return n+1
+  return 0
+
+PUB waitForButton (): n
+' wait uintil a button is hit and returns its number
+  repeat
+    wait_for_touch ()
+    wait_for_untouch ()
+    n:= buttonIsHit (Get_TS_XY ())
+  until n > 0
+
+PUB calibrateTouch() | xstr, ystr, tx,ty,tx_topx,ty_topy,tx_botx,ty_boty,spotx,spoty,int
+  xstr := width/2-9*8                                   ' approx center of screen for text (18 chars 8x8 font)
+  ystr := height/2-4
+
+  clearScreen()
+  clearButtons()
+  drawstring(xstr, ystr, string("CALIBRATE TOP LEFT"))
+  SetColRow(cal_topx, cal_topy)
+  DrawChar("x")                                      ' draw top left calibration X
+  int := 1
+
+  Wait_for_touch()                                      ' wait for touch
+  tx_topx,ty_topy:= Get_TS_XY_raw()                     ' calibration point top left
+
+'  term.fstr3(string("X %d Y %d int %d %s\r\n"),tx_topx,ty_topy,int)
+  clearscreen()
+  drawstring(xstr, ystr, string("CALIBRATE BOTTOM RIGHT"))
+  SetColRow(cal_botx, cal_boty)
+
+  DrawChar("x")                                      ' draw bottom right calibration X
+
+  wait_for_untouch()                                    ' wait until not touched
+  wait_for_touch()                                      ' wait until touched
+
+  tx_botx,ty_boty:= Get_TS_XY_raw()                     ' calibration point bottom right
+'  term.fstr3(string("X %d Y %d int %d %s\r\n"),tx_botx,ty_boty,spotx)
+  cal_divx:= (tx_botx - tx_topx) * width / (cal_botx - cal_topx)
+  cal_divy:= (ty_boty - ty_topy) * height / (cal_boty - cal_topy)
+  cal_offx:= tx_topx - cal_topx * cal_divx / width
+  cal_offy:= ty_topy - cal_topy * cal_divy / height
+  calibrated:= true
+
+  clearscreen()
+  wait_for_untouch()
+  drawstring(xstr, ystr, string("TOUCH DISPLAY TO MAKE X"))
+  spotx:= cal_botx-(cal_edge/2)
+  spoty:= cal_edge/2
+  setWindow(spotx, spoty, spotx+cal_edge, spoty+cal_edge)
+  fillWindow(white)
+  addButton (spotx, spoty, cal_edge, cal_edge)
+
+  setBGcolor(white)
+  setFGcolor(black)
+  drawstring(spotx, cal_edge, string("DONE"))
+  setFGcolor(green)
+  setBGcolor(black)
+
+  repeat
+    wait_for_untouch()                                  ' wait until not touched
+    wait_for_touch()                                    ' wait until touched
+
+    spotx,spoty:= Get_TS_XY()
+
+    if buttonIsHit (spotx, spoty)
+      quit ' cal_done
+    SetColRow(spotx,spoty)
+    DrawChar("x")
+  clearButtons()
+  clearscreen()
+
+'    term.fstr3(string("X %d Y %d int %d %s\r\n"),spotx,spoty,spotx)
+'----------------------------------------------------------
+
+PUB Get_TS_XY (): cx, cy | rx, ry ' return touchscreen X and Y at once (calibrated)
+  rx,ry:= Get_TS_XY_raw()
+
+'<--------------------------->
+'<--- Modified for P2GUI ---->
+'<--------------------------->
+ 'For Lolin TFT-2.4 (XPT2046)
+ 'debug(udec(rx), udec(ry), udec(calibrated), udec(rotation))
+  if calibrated AND rotation == LCD_mirror_0
+    cx := (ry - cal_offy) * width / cal_divy
+    cy := (rx - cal_offx) * height / cal_divx
+  if calibrated AND rotation == LCD_mirror_90 ' otherwise return 0,0
+    cx:= (rx - cal_offx) * width / cal_divx   ' offset and scaling adjustment
+    cy:= (ry - cal_offy) * height / cal_divy
+'<--------------------------->
+
+PUB Get_TS_CalibData (): ptr
+' returns pointer to 4 longs calibration data
+' treat them as "black box" (read only)
+  return @cal_offx
+
+PUB Put_TS_CalibData (ptr)
+' copies calibration data from user space to internal variables
+  if long[ptr]<>0 AND long[ptr]<>-1 ' sanity check
+    longmove (@cal_offx, ptr, 4)
+    calibrated:= true
+
+
+PRI Get_TS_XY_raw (): x, y  ' return touchscreen X and Y at once (uncalibrated)
+{
+  x:= get_ts($91)                              ' $91 turns off interupt and collects x position
+  x:= get_ts($91)                              ' $91 keeps off interupt after x data, calibration point tx_topx
+  y:= get_ts($D1)                              ' $D1 keeps off interupt and collects y position
+  y:= get_ts($D0)                              ' $D0 turns interupt back on after calibration point ty_topy
+}
+  WaitMailbox()                    ' wait for PASM cog ready
+  mailbox  := $41_00_0000                      ' start ADC poll
+  WaitMailbox()                    ' wait for result
+  x:= mailbox5 & $FFFF
+  y:= mailbox5 >> 16
+
+  'debug (uhex(x), uhex(y))
+
+'----------------------------------------------------------
+
+PUB Wait_for_touch()
+  repeat while NOT Touched()
+
+PUB Wait_for_untouch()
+  repeat while Touched()
+
+PUB Touched(): touch | old
+  touch:= NOT pinr(PIN_TIRQ)  ' debouncing is done in hardware (smart pin digital filters)
+'-----------------------------------------------------------
+
+
+'<--------------------------->
+'<----- Added for P2GUI ----->
+'<--------------------------->
+CON
+  DEBOUNCE_TIMER = 50
+
+PUB detects_valid_touch(): valid_touch_detected | pos_x, pos_y
+  valid_touch_detected := false
+  if Touched() AND (getms()-last_time >= DEBOUNCE_TIMER)
+    pos_x, pos_y := GET_TS_XY()
+    if (pos_x > 0 AND pos_x <= cal_offx) AND (pos_y > 0 AND pos_y <= cal_offy)
+      valid_touch_detected := true
+      last_x := pos_x
+      last_y := pos_y
+    last_time := getms()
+
+PUB get_last_valid_touch():x,y
+  x := last_x
+  y := last_y
+'<--------------------------->
+
+
+''+-----------------------------------------------------+
+''| User Low Level Calls (directly manipulate the LCD)  |
+''+-----------------------------------------------------+
+PUB lcdWriteData16(val)
+' Write 16b data word to LCD
+  lcdWriteData(val >> 8)
+  lcdWriteData(val & $FF)
+
+PUB lcdWriteData(val)
+' Write 8b data byte to LCD
+  WaitMailbox()
+  mailbox := $100 | val                                 ' dc=data=1
+
+PUB lcdWriteCmd(val)
+' Write 8b commandbyte to LCD
+  WaitMailbox()
+  mailbox := val                                        ' dc=cmd=0
+
+''+-----------------------------------------------------+
+''| Initialise LCD (eg 4.0" TFT SPI 480*320 V1.0)       |
+''+-----------------------------------------------------+
+PRI lcdInit(rotate)                                     ' screen rotation
+' Start pasm cog and wait till running
+  lcdcog := coginit(16, @entry, @mailbox) +1            ' start LCD Driver Cog
+  waitms(100)                                           ' 100ms
+
+' Reset the LCD (either HW or SW - both work)
+  mailbox := $FF_00_0000                                '\ HW reset LCD
+' lcdWriteCmd(LCD_SW_RESET)                             '] SW Reset
+  waitms(500)                                           ' 500ms
+
+' Sleep mode off
+  lcdWriteCmd(LCD_SLEEP_OFF)
+  waitms(5)                                             ' 5ms
+
+' Pixel Format 16bits/pixel
+  lcdWriteCmd(LCD_PIXEL_FORMAT)
+  lcdWriteData($05)                                     ' 16b/pixel
+
+
+' set display rotation
+  lcdWriteCmd(LCD_MADCTR)                               ' mem addr ctrl
+  lcdWriteData(rotate)                                  ' rotation 0/90/180/270deg=$00/$A0/$C0/$60
+
+' Display On
+  lcdWriteCmd(LCD_DISPLAY_ON)
+  waitms(1)                                             ' 1ms
+
+
+
+DAT
+''+-----------------------------------------------------+
+''| PASM LCD Low Level Drivers (separate cog)           |
+''+-----------------------------------------------------+
+                org     0
+entry                                                   ' PTRA contains the pointer to the hub mailbox
+                cmp     PIN_3V3, #64      wc            '\ -1 for non-1.44in LCD
+    if_c        cmp     PIN_GND, #64      wc            '| -1 for non-1.44in LCD
+    if_c        drvh    PIN_3V3                         '| power & gnd for 1.44in LCD only !!!
+    if_c        drvl    PIN_GND                         '/
+
+                drvh    PIN_CE                         '\ set levels and enable outputs...
+                drvh    PIN_RST                        '|
+                drvl    PIN_DC                         '|
+                fltl    PIN_SDA                        '|
+                drvh    PIN_CLK                        '|
+                drvh    PIN_LED                        '/
+                wrpin   modeLClk,PIN_CLK               ' smart pin transition mode
+                wrpin   modeLTXD,PIN_SDA               ' smart pin synchronous serial transmit
+                wxpin   divCLK,PIN_CLK                 ' clock transition every 50ns
+                wypin   #2,PIN_CLK                     ' dummy pulse to force IN=1 (ready flag)
+                mov     divTCLK,divCLK
+                shl     divTCLK,#2
+
+                cmp     PIN_TCLK,#64 wc                ' initialize touch panel if present
+        if_c    drvh    PIN_TCS
+
+                waitx   delay50ms
+                waitx   delay50ms
+
+done            wrlong  #0,   PTRA                       ' clear hub mailbox
+
+wait            rdlong  data, PTRA         wz            ' wait for something to do
+        if_z    jmp     #wait
+
+                setq    #6-1                            '\ get.. data,      data1,    coordss, coordse, colors, pixelno
+                rdlong  data, PTRA                      '/       cmd+params params(1) xs,ys    xe,ye    fg,bg   pixels
+
+                mov     command, data                   '\ extract command
+                shr     command, #24                    '|
+                cmp     command, #$00     wz            '| $00= write cmd/data from spin
+        if_e    jmp     #writex                         '|
+                cmp     command, #$FF     wz            '| $FF= HW Reset
+        if_e    jmp     #reset                          '|
+                cmp     command, #$81     wz            '| $81= Set window xs,ys,xe,ye
+        if_e    jmp     #window                         '|
+                cmp     command, #$82     wz            '| $82= Fill window rgb
+        if_e    jmp     #fill                           '|
+                cmp     command, #$83     wz            '| $83= set font
+        if_e    jmp     #set_font                       '|
+                cmp     command, #$84     wz            '| $84= paint char (variable font size)
+        if_e    jmp     #paintchar                      '|
+                cmp     command, #$85     wz            '| $85= paint 16x16 symbol
+        if_e    jmp     #paint16Icon                    '|
+                cmp     command, #$86     wz            '| $86= copy bitmap
+        if_e    jmp     #copyBitmap                     '|
+                cmp     command, #$87     wz            '| $86= shrink bitmap
+        if_e    jmp     #shrinkBitmap                   '|
+                cmp     command, #$41     wz            '| $41= get touchscreen x,y
+        if_e    jmp     #pollTouchXY                    '|
+                jmp     #done                           '/ unknown command, ignore
+
+
+''+-----------------------------------------------------+
+''| LCD SetWindow(xs,ys,xe,ye)                          |
+''+-----------------------------------------------------+
+window          mov     data, #LCD_COL_ADR
+                call    #writecmd
+                mov     data, coordss                   '\ xs
+                shr     data, #16                       '/
+                call    #write16data
+
+                mov     data, coordse                   '\ xe
+                shr     data, #16                       '/
+                call    #write16data
+
+                mov     data, #LCD_ROW_ADR
+                call    #writecmd
+                mov     data, coordss                   '\ ys
+                zerox   data,#15                        '/
+                call    #write16data
+
+                mov     data, coordse                   '\ ye
+                zerox   data,#15                        '/
+                call    #write16data
+
+                jmp     #done
+
+''+-----------------------------------------------------+
+''| LCD FillWindow(rgb,pixels)                          |
+''+-----------------------------------------------------+
+fill            mov     data, #LCD_RAM_WRITE
+                call    #writecmd
+                mov     ctr, pixelno                    ' pixels (32b)
+                shr     data1, #16                      ' rgb(16b)
+.fill_loop      mov     data, data1                     ' rgb
+                call    #write16data
+                djnz    ctr, #.fill_loop
+                jmp     #done
+
+''+-----------------------------------------------------+
+''| LCD SetFont() mailbox2=width/height                 |
+''+-----------------------------------------------------+
+set_font
+                mov     fontPtr,data1
+                getword fontw,coordss,#1
+                getword fonth,coordss,#0
+                mov     fontb,pixelno    ' byte count per char
+                jmp     #done
+
+''+-----------------------------------------------------+
+''| LCD PaintChar() mailbox3=fgcolor/bgcolor            |
+''+-----------------------------------------------------+
+paintchar
+                getword fg,colors,#1                    ' get fgcolor/bgcolor
+                getword bg,colors,#0
+                and     data, #$7F                      ' char =<$7F
+                cmp     data, #$20              wc      ' ctrl char?
+        if_c    mov     data, #$7F                      ' y: substitute char($7F)  as no font for ctrl chars
+                cmpsub  data, #$20                      ' adjust font start at $20 as no font for ctrol chars
+
+'determine font offset (=data): 6*8: multiply by 6; 8*8 multiply by 8; then add font address in cog
+
+                mov     pixelctr1,fontw
+                mul     pixelctr1,fonth                 ' no. of pixels = width*height
+                mul     data,fontb
+                add     data,fontPtr                    ' ptr = char * modulus
+                rdfast  #0,data                         ' setup FIFO
+
+                mov     data, #LCD_RAM_WRITE
+                call    #writecmd
+                call    #paintpixels
+                jmp     #done
+
+''+-----------------------------------------------------+
+paintpixels
+                mov     pixelctr2,pixelctr1             ' ctr1 = total pixels left
+                fle     pixelctr2,#8                    ' ctr2 = 1..8 pixels
+                rfbyte  pixels                          ' fetch next word
+                shl     pixels,#24
+nextpixel       rol     pixels, #1    wc
+        if_c    mov     data, fg                        ' "1" = fgcolor
+        if_nc   mov     data, bg                        ' "0" = bgcolor
+                call    #write16data                    ' write fgcolor/bgcolor(16b) pixel(1)
+                djnz    pixelctr2, #nextpixel
+                sub     pixelctr1,#8 wcz
+        if_a    jmp     #paintpixels                    ' repeat if >0 left
+                ret
+
+''+------------------------------------------------------------------+
+''| LCD PaintIcon <=64x64  mailbox3=fgcolor/bgcolor mailbox1=pointer |
+''+------------------------------------------------------------------+
+paintIcon
+                mov     fg, colors                      ' get fgcolor/bgcolor
+                mov     bg, fg
+                shr     fg, #16                         ' extract fgcolor
+                zerox   bg,#15                          ' extract bgcolor
+
+                mov     data,coordse
+                sub     data,coordss
+                add     data,##$10001                   ' window = (ye-ys+1) * (xe-xs+1)
+                getword bits,data,#1
+                getword rowctr,data,#0
+
+                rdfast  #0,data1                         ' setup FIFO
+                mov     data, #LCD_RAM_WRITE
+                call    #writecmd
+
+.nextRow        mov     pixelctr1,bits                   ' bits = pixels per row
+                call    #paintpixels
+                djnz    rowctr,#.nextRow
+                jmp     #done
+
+
+''+------------------------------------------------------------------+
+''| LCD PaintIcon <=64x64  mailbox3=fgcolor/bgcolor mailbox1=pointer |
+''+------------------------------------------------------------------+
+paint16Icon
+                mov     fg, colors                      ' get fgcolor/bgcolor
+                mov     bg, fg
+                shr     fg, #16                         ' extract fgcolor
+                zerox   bg,#15                          ' extract bgcolor
+
+                mov     data,coordse
+                sub     data,coordss
+                add     data,##$10001                   ' window = (ye-ys+1) * (xe-xs+1)
+                getword bits,data,#1
+                getword rowctr,data,#0
+
+                rdfast  #0,data1                         ' setup FIFO
+                mov     data, #LCD_RAM_WRITE
+                call    #writecmd
+
+.next16Row      mov     pixelctr1,bits                   ' bits = pixels per row
+                call    #paint16iconpixels
+                djnz    rowctr,#.next16Row
+                jmp     #done
+
+
+''+-----------------------------------------------------+
+'' Added by Jose Rullan for drawing icons 16x16 specified by words
+'' not by bytes
+''------------------------------------------------------
+paint16iconpixels
+                mov     pixelctr2,pixelctr1             ' ctr1 = total pixels left
+                fle     pixelctr2,#16                    ' ctr2 = 1..16 pixels
+                rfword  pixels                          ' fetch next word
+                shl     pixels,#16
+next16iconpixel rol     pixels, #1    wc
+        if_c    mov     data, fg                        ' "1" = fgcolor
+        if_nc   mov     data, bg                        ' "0" = bgcolor
+                call    #write16data                    ' write fgcolor/bgcolor(16b) pixel(1)
+                djnz    pixelctr2, #next16iconpixel
+                sub     pixelctr1,#16 wcz
+        if_a    jmp     #paint16iconpixels              ' repeat if >0 left
+                ret
+
+
+''+------------------------------------------------------------------+
+''| LCD CopyBitmap 4bpp  mailbox3=palettePtr mailbox1=sourceData     |
+''+------------------------------------------------------------------+
+copyBitmap
+                rdfast  #0,colors
+                mov     ctr,#0
+                rep     #3,#16
+                altd    ctr,#palette
+                rfword  palette
+                add     ctr,#1
+
+                rdfast  #0,data1
+                mov     data, #LCD_RAM_WRITE
+                call    #writecmd
+
+.copy_loop      rfbyte  data1
+                mov     data, data1
+                and     data,#$F                        ' 1st nibble
+                alts    data,#palette
+                mov     data,data
+                call    #write16data
+                djz     pixelno,#done
+                shr     data1,#4                        ' 2nd nibble
+                alts    data1,#palette
+                mov     data,data1
+                call    #write16data
+                djnz    pixelno,#.copy_loop
+                jmp     #done
+
+''+------------------------------------------------------------------+
+''| LCD ShrinkBitmap 4bpp  mailbox3=palettePtr mailbox1=sourceData   |
+''+------------------------------------------------------------------+
+shrinkBitmap
+                rdfast  #0,colors
+                mov     ctr,#0
+                rep     #5,#16
+                rfword  data
+                rgbexp  data
+                altr    ctr,#palette
+                shr     data,#2
+                add     ctr,#1
+
+                mov     data, #LCD_RAM_WRITE
+                call    #writecmd
+                'mov     pixelno,#50
+
+.row_loop       mov     ctr,coordse
+.pix_loop       mov     pixels,#0
+                rdbyte  bits,data1
+                call    #blend
+                shr     bits,#4
+                call    #blend
+                add     data1,coordse ' bytes per row
+                rdbyte  bits,data1
+                call    #blend
+                shr     bits,#4
+                call    #blend
+                sub     data1,coordse
+                add     data1,#1
+                rgbsqz  pixels
+                mov     data,pixels
+                'debug (uhex(data), uhex(pixels), uhex(palette))
+                call    #write16data
+                djnz    ctr,#.pix_loop
+                add     data1,coordse
+                sub     pixelno,coordse wcz
+        if_a    jmp     #.row_loop
+'.end jmp #.end
+                jmp     #done
+
+blend           mov     data,bits
+                and     data,#$0F
+                alts    data,#palette
+        _ret_   add     pixels,palette
+
+''+-----------------------------------------------------+
+''| LCD Reset                                           |
+''+-----------------------------------------------------+
+reset
+                drvl    PIN_RST                        ' RST=0
+                waitx   delay50ms
+                drvh    PIN_RST                        ' RST=1
+                waitx   delay50ms
+                jmp     #done
+
+''+-----------------------------------------------------+
+''| prepare smart pins for LCD data transmission        |
+''+-----------------------------------------------------+
+' the smart pins have to be completely re-initialized every time because
+' they may be combined with the touch panel SPI bus (except CS, of course)
+selectLCD
+.waitRdy        testp   PIN_CLK wz                     ' IN=1 if smart pin ready
+        if_nz   jmp     #.waitRdy                        ' wait until last CLK sequence finished
+                fltl    PIN_SDA
+                drvc    PIN_DC                         ' cmd=0 / data=1
+                wrpin   modeLClk,PIN_CLK               ' smart pin transition mode
+                wrpin   modeLTXD,PIN_SDA               ' smart pin synchronous serial transmit
+                wxpin   divCLK,PIN_CLK                 ' clock transition every 50ns
+        _ret_   drvl    PIN_CE                         ' CS=0
+
+''+-----------------------------------------------------+
+''| LCD Write 8bit CMD/DATA (b8:cmd=0/data=1)           |
+''+-----------------------------------------------------+
+writedata       or      data, #$100                     ' DC=1=data
+writecmd
+write
+                shl     data, #24 wc                    ' prep byte to write (msb first), bit8->C
+                call    #selectLCD                      ' prepare LCD smart pins
+                rev     data
+                wxpin   #$27,PIN_SDA                   ' 8 bits, start/stop mode
+                wypin   data,PIN_SDA
+                drvl    PIN_SDA                        ' enable TX smart pin
+        _ret_   wypin   #16,PIN_CLK                    ' start CLK sequence
+
+writex          call    #write                          ' write cmd/data (from spin)
+                jmp     #done
+
+write16data     shl     data, #16                       ' prep word to write (msb first)
+                modc    _set wc
+                call    #selectLCD                      ' prepare LCD smart pins
+                rev     data
+                wxpin   #$2F,PIN_SDA                   ' 16 bits, start/stop mode
+                wypin   data,PIN_SDA
+                drvl    PIN_SDA
+        _ret_   wypin   #32,PIN_CLK
+
+''+-----------------------------------------------------+
+''| Touchscreen                                         |
+''+-----------------------------------------------------+
+pollTouchXY
+                mov     data,#$91
+                call    #get_ts_adc
+                mov     data,#$91
+                call    #get_ts_adc
+                mov     ts_xy,data
+                mov     data,#$D1
+                call    #get_ts_adc
+                mov     data,#$D0
+                call    #get_ts_adc
+                shl     data,#16
+                or      ts_xy,data
+                wrlong  ts_xy,ptra[6]
+                jmp     #done
+
+Get_ts_adc
+.waitRdy        testp   PIN_CLK wz                     ' IN=1 if smart pin ready
+        if_nz   jmp     #.waitRdy                       ' wait until last CLK sequence finished
+
+                fltl    PIN_TDIN                       ' reset RX/TX shift registers
+                fltl    PIN_TDO
+                wrpin   modeTCLK,PIN_TCLK              ' smart pin transition mode
+                wrpin   modeTTXD,PIN_TDIN              ' smart pin synchronous serial transmit
+                wrpin   modeTRXD,PIN_TDO               ' smart pin synchronous serial receive
+                wxpin   divTCLK,PIN_TCLK               ' clock transition every 200ns
+                drvl    PIN_TCLK
+
+                drvh    PIN_CE                         ' de-select LCD controller
+                shl     data, #24                       ' prep byte to write (msb first)
+                drvl    PIN_TCS                        ' touch CS=0
+                rev     data
+                wxpin   #$34,PIN_TDIN                  ' 21 bits, start/stop mode
+                wypin   data,PIN_TDIN
+                drvl    PIN_TDIN                       ' enable TX smart pin
+                wxpin   #$34,PIN_TDO                   ' 21 bits, with hold time
+                drvl    PIN_TDO                        ' enable RX smart pin
+                waitx   divCLK                          ' setup time before first rising edge
+                wypin   #48,PIN_TCLK                   ' start CLK sequence
+.waitDone       testp   PIN_TDO   wz                   ' IN=1 if smart pin ready
+        if_nz   jmp     #.waitDone                      ' wait until CLK sequence finished
+                rdpin   data,PIN_TDO
+                rev     data
+                zerox   data,#11                        ' limit to 12 bits
+        _ret_   drvh    PIN_TCS                        ' CS=1
+
+''+-----------------------------------------------------+
+''| PASM Constants & Variables                          |
+''+-----------------------------------------------------+
+' Default pinout: ER-TFTM032 3.2in 320x240 ILI9341 for use with KISS board
+' You can override the defaults with SetLcdPins() and SetTouchPins()
+PIN_3V3         long    -1                ' 3v3 ~59mA or 5V ~113mA power supplied by power supply
+PIN_GND         long    -1                ' GND pwr supplied by power supply
+PIN_CE          long    25    {O}         ' Serial clock enable pin
+PIN_RST         long    23    {O}         ' Reset pin (can be reset by software)
+PIN_DC          long    24    {O}         ' Data / Command selection pin
+PIN_SDA         long    27    {O}         ' Serial Data MOSI pin
+PIN_CLK         long    26    {O}         ' Serial Clock pin
+PIN_LED         long    23    {O}         ' LED backlight enable pin (hi to enable - ~2.4mA)
+PIN_SDO         long    28    {I}         ' Serial Data MISO pin (not used)
+
+PIN_TCLK        long    26    {O}         '\ Touch: Serial Clock pin
+PIN_TCS         long    29    {O}         '|        Serial clock enable pin
+PIN_TDIN        long    27    {O}         '|        Serial Data In  MOSI pin
+PIN_TDO         long    28    {I}         '|        Serial Data Out MISO pin
+PIN_TIRQ        long    30    {I}         '/        Serial Interrupt out pin
+
+delay50ms       long    300_000 * 50         ' 50ms at 300MHz (will be a bit longer if <300MHz)
+modeLCLK        long    P_TRANSITION + P_OE + P_INVERT_OUTPUT     ' LCD PIN_CLK
+modeLTXD        long    P_SYNC_TX + P_OE + P_SYNC_IO + P_FILT0_AB ' LCD PIN_SDA    (MOSI)
+modeTCLK        long    P_TRANSITION + P_OE                       ' touch PIN_TCLK
+modeTTXD        long    P_SYNC_TX + P_OE + P_INVERT_B             ' touch PIN_TDIN (MOSI)
+modeTRXD        long    P_SYNC_RX                                 ' touch PIN_TDO  (MISO)
+divCLK          long    10                              ' # clocks for SCLK hi/lo time
+divTCLK         long    40                              ' # clocks for TCLK
+fontPtr         long    0                               ' hub pointer to font data
+fontw           long    8
+fonth           long    8
+fontb           long    8
+
+data            res     1                               '\ mailbox:    cmd(8b)<<24 | spare(8b)<<16 | param(8/16b)
+data1           res     1                               '| mailbox1:   rgb<<16 | pixelcnt(old)
+coordss         res     1                               '| mailbox2s:  xs<<16 | ys<<16                  (x,y start)
+coordse         res     1                               '| mailbox2e:  xe<<16 | ye<<16                  (x,y end)
+colors          res     1                               '| mailbox3:   fgcolor(16b)<<16 | bgcolor(16b)
+pixelno         res     1                               '/ mailbox4:   pixel count                      (fill window)
+ts_xy           res     1                               ' mailbox5: touchscreen x,y
+
+fg              res     1
+bg              res     1
+command         res     1
+
+pixels          res     1
+pixelctr1       res     1
+pixelctr2       res     1
+bits            res     1
+ctr             res     1
+rowctr          res     1
+
+palette         res     16                              ' buffer for 16 colors
+
+                fit     $1F0
+
+
+dat
+
+{
+  PIN_3V3               = -1                ' 3v3 ~59mA or 5V ~113mA power supplied by power supply
+  PIN_GND               = -1                ' GND pwr supplied by power supply
+  PIN_CE                = 25    {O}         ' Serial clock enable pin                                   TFT_CS  (25)
+  PIN_RST               = 23    {O}         ' Reset pin (can be reset by software)                      TFT_RST (23)
+  PIN_DC                = 24    {O}         ' Data / Command selection pin                              TFT_DC  (24)
+  PIN_SDA               = 27    {O}         ' Serial Data MOSI pin                                      MOSI    (27)
+  PIN_CLK               = 26    {O}         ' Serial Clock pin                                          SCK?    (26)
+  PIN_LED               = 23    {O}         ' LED backlight enable pin (hi to enable - ~2.4mA)          LED     (23)
+  PIN_SDO               = 28    {I}         ' Serial Data MISO pin (not used)                           MISO    (28)
+
+  PIN_TCLK              = 26    {O}         '\ Touch: Serial Clock pin                                  SCK?    (26)
+  PIN_TCS               = 29    {O}         '|        Serial clock enable pin                           TS_CS   (29)
+  PIN_TDIN              = 27    {O}         '|        Serial Data In  MOSI pin                          MOSI    (27)
+  PIN_TDO               = 28    {I}         '|        Serial Data Out MISO pin                          MISO    (28)
+  PIN_TIRQ              = 30    {I}         '/        Serial Interrupt out pin                          TS_IRQ  (30)
+}
+
+{{
++------------------------------------------------------------------------------------------------------------------------------+
+|                                                   TERMS OF USE: MIT License                                                  |
++------------------------------------------------------------------------------------------------------------------------------+
+|Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation    |
+|files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,    |
+|modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software|
+|is furnished to do so, subject to the following conditions:                                                                   |
+|                                                                                                                              |
+|The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.|
+|                                                                                                                              |
+|THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE          |
+|WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR         |
+|COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,   |
+|ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         |
++------------------------------------------------------------------------------------------------------------------------------+
+}}

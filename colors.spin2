@@ -1,0 +1,76 @@
+CON
+  ' BGR 5+6+5 16bits/pixel (RGB reversed)
+  black                 = $0000
+  white                 = $FFFF
+  blue                  = $F800
+  green                 = $07E0
+  red                   = $001F
+  yellow                = red+green
+  orange                = %00000_100000_11111
+  purple                = red+blue
+  cyan                  = green+blue
+  dark_turquoise        = $A421
+  grey                  = $7BEF
+  lightgrey              = %10000_100000_10000
+  darkgrey              = %01000_010000_01000
+
+PUB null()
+
+PUB lighten(c,f):light|r,g,b',f
+  f := f <# 31
+
+' BGR 5+6+5 16bits/pixel
+  r := (%11111) & c
+  g := ((%111111 << 5) & c) >> 5
+  b := ((%11111  << 11) & c) >> 11
+
+  'debug("before light ", ubin(r), ubin(g), ubin(b))
+
+  r := 0 #> (r+f) <# $1F
+  g := 0 #> (g+ (2*f)) <# $3F
+  b := 0 #> (b+f) <# $1F
+
+  light := (b<<11) | (g<<5) | r
+  'debug("after light ", ubin(r), ubin(g), ubin(b))
+
+PUB darken(c,f):dark_color|r,g,b',f
+  f := f <# 31
+
+' BGR 5+6+5 16bits/pixel
+  r := (%11111) & c
+  g := ((%111111 << 5) & c) >> 5
+  b := ((%11111  << 11) & c) >> 11
+
+  'debug("before dark ", ubin(r), ubin(g), ubin(b))
+{
+  r := 0 #> (r >> 1) <# $1F
+  g := 0 #> (g >> 1) <# $3F '$3F
+  b := 0 #> (b >> 1) <# $1F
+}
+  r := 0 #> (r - f) <# $1F
+  g := 0 #> (g - (2*f)) <# $3F '$3F
+  b := 0 #> (b - f) <# $1F
+
+  dark_color := (b<<11) | (g<<5) | r
+  'debug("after dark ", ubin(r), ubin(g), ubin(b))
+
+PUB transition(c, r, g, b):result | bc, gc, rc
+  bc := (0 #> (($1F<<11&c)>>11+b) <# $1F)
+  gc := (0 #> (($3F<<5&c)>>5+g) <# $3F)
+  rc := (0 #> (($1F&c)+r) <# $1F)
+
+  result := bc<<11 | gc<<5 | rc
+  'debug(sdec(r), sdec(rc), sdec(g), sdec(gc), sdec(b), sdec(bc), ubin_word(result))
+  debug(sdec(rc), sdec(gc), sdec(bc), ubin_word(result))
+
+PUB set_color(r,g,b):c
+  b := 0 #> b/8 <# $1F
+  g := 0 #> g/4 <# $3F
+  r := 0 #> r/8 <# $1F
+  c := b<<11|g<<5|r
+
+PUB mix_color(c,r,g,b):result
+  b := 0 #> b <# $1F
+  g := 0 #> g <# $3F
+  r := 0 #> r <# $1F
+  result := (c & $1F<<11)+(b<<11)| (c & $3F<<5)+(g<<5)| (c & $1F) + r

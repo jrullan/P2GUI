@@ -1,0 +1,291 @@
+{
+  Gauge Object - Template
+}
+CON
+  DEBOUNCE_TIMER = 500
+  MAX_CHARACTERS = 8
+
+'Drawing Methods Constants
+  #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
+  #6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
+  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
+
+'Text align constants
+  #0, LEFT_ALIGN, CENTER_ALIGN, RIGHT_ALIGN
+
+VAR
+'Attributes
+  long id                       'Unique ID - (window index << 4)|(button index)
+  long bg_color                 'background color
+  long fg_color                 'foreground color
+  long ol_color                 'outline = border
+  word xtop                     'Top Left X (Pixel)
+  word ytop                     'Top Left Y (Pixel)
+  word xbot                     'Bottom Right X (Pixel)
+  word ybot                     'Bottom Right Y (Pixel)
+  byte border_width             'Border width in pixels
+
+'Method Pointers
+  long event_handler            'Default event handler method pointer
+  long drawing_method_pointer   'Drawing method pointers
+
+'Internal state variables
+  long last_time                'Stores touch event debouncer last time value
+  long value                    'Virtual value of the widget
+  byte configured               'Boolean flag to identify configured widgets in the window's list
+  byte enabled                  'Boolean flag to indicate widget can be drawn and can check for events
+  byte invert_border            'Boolean flag to invert border colors
+
+'Characters variables
+  byte contents[MAX_CHARACTERS+1] 'Should be 1 more than the displayed characters to account for the terminating zero
+  long string_pointer           'Hub address of string memory (addresses are LONG but memory access in hub is byte)
+  byte font_size
+  byte padding
+  byte align                    '0 = LEFT, 1 = CENTER, 2 = RIGHT
+  byte compression              'compression factor for the text
+
+'Gauge specific variables
+  long fill_color
+  long fill_hi_color            'Gauge fill color when value > hi threshold
+  long fill_lo_color            'Gauge fill color when value < lo threshold
+  long hi_threshold
+  long lo_threshold
+  long max_value
+  long min_value
+  byte header
+  byte show_val
+
+OBJ
+  color : "Colors"
+  util  : "Utilities"
+
+PUB null()
+
+''+--------------------------------------------------------------------+
+''   WIDGET INTERFACE METHODS
+''+--------------------------------------------------------------------+
+PUB set_enable(e)
+  if e
+    enabled := true
+  else
+    enabled := false
+
+PUB draw()| w, h, x, y, tw, th
+''This method draws the graphical representation of this widget type
+  if enabled AND drawing_method_pointer <> 0
+    'FILL
+    LONG[drawing_method_pointer][FILL_RECTANGLE](xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
+
+    'BORDER
+    util.draw_border(drawing_method_pointer,xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
+
+    'GAUGE
+    'if show_val
+      'draw_val()
+    draw_gauge()
+
+
+PUB check_event(coord):is_mine | x, y
+  if configured AND enabled
+    x := coord.WORD[0]
+    y := coord.WORD[1]
+    if (x >= xtop AND x <= xbot) AND (y >= ytop AND y <= ybot)
+      is_mine := true
+
+      if event_handler <> 0
+        if (getms()-last_time) >= DEBOUNCE_TIMER          'debounce the event
+          event_handler(id)                               'call the event handler and pass along id of button
+          last_time := getms()                            'reset debounce timer
+
+PUB set_drawing_methods(METHOD_PTR)
+  drawing_method_pointer := METHOD_PTR
+
+''+--------------------------------------------------------------------+
+''   DRAWING VALUE METHODS
+''+--------------------------------------------------------------------+
+PUB set_value(val)|c,extra,digits,prev_digits,n,exp_val,char_val
+  value := val
+  c := 0
+  extra := 0
+  digits := util.get_digits(val)
+
+  if val == 0
+    BYTE[string_pointer] := $30                          '0 character
+    digits := 1
+  else
+    repeat n from digits to 1
+      exp_val := util.exponent(10, n-1)
+      char_val := val / exp_val
+      val := val - char_val*exp_val
+      BYTE[string_pointer + (extra) + (digits-n)] := char_val + $30      'number character
+
+  BYTE[string_pointer + digits + extra] := 0                             'string terminating 0
+
+
+PUB draw_text(x,y)| prev_pointer, chars, n, w, h, k, k_old, xs, xe, old_chars
+  'Clear display
+  LONG[drawing_method_pointer][FILL_RECTANGLE](xtop+border_width, y, xbot-border_width, y+padding+header, bg_color)
+  'Set colors
+  LONG[drawing_method_pointer][SET_BACKGROUND_COLOR](bg_color)
+  LONG[drawing_method_pointer][SET_FOREGROUND_COLOR](util.red_to_green(value,min_value,max_value))
+  'Select font size
+  LONG[drawing_method_pointer][SELECT_FONT_SIZE](1)
+
+  w := font_size * 8
+  h := font_size * 8
+  chars := util.get_characters(string_pointer)
+
+  'Draw characters that are different from previous value
+  repeat n from 0 to chars-1
+    k := BYTE[string_pointer+n]
+    xs := x+(w-compression)*(n)
+    xe := xs + w
+    LONG[drawing_method_pointer][SET_WINDOW](xs, y, xe, y+h)
+    LONG[drawing_method_pointer][DRAW_CHAR](k)
+
+
+PUB update_value(val)
+  set_value(val)
+  'draw_gauge()
+
+
+PUB set_value_and_fill_ryg(val)
+''Set value and color based on value red - yellow - green
+  if enabled
+    set_value(val)
+    fill_color := util.red_to_green(val,min_value,max_value)
+    draw_gauge()
+
+
+PRI draw_val()|w,h,tw,th,x,y
+    w := (xbot - xtop) - 2*border_width
+    h := (ybot - ytop) - 2*border_width
+    tw := util.get_text_width(string_pointer, font_size, compression)
+    th := util.get_text_height(font_size)
+
+    x := xtop + border_width + (w - tw)/2
+    y := ytop + border_width + padding' (padding - th)/2
+    draw_text(x,y)
+
+
+PRI draw_gauge()|x, y, ym, c
+  if show_val
+    draw_val()
+
+  c := fill_color
+  ym := ytop + border_width  '((show_val==true) ? (header+padding) : 0)
+  if show_val
+    ym := ym + padding + header
+  x := xtop+border_width + padding
+  y := (ym) #> util.scale(value, 0, 100, ybot-border_width, ym) <# (ybot-border_width)
+
+  LONG[drawing_method_pointer][FILL_RECTANGLE](x, ym, xbot-padding-border_width, y, bg_color)
+  LONG[drawing_method_pointer][FILL_RECTANGLE](x, y, xbot-padding-border_width, ybot-border_width, c)
+
+
+
+''+--------------------------------------------------------------------+
+''   CONFIGURATION METHODS
+''+--------------------------------------------------------------------+
+PUB configure(i, xt, yt, w, h, bg, fg, ol)
+  id := i
+  xtop := xt
+  ytop := yt
+  xbot := w + xt 'xb
+  ybot := h + yt 'yb
+
+  bg_color := bg
+  fg_color := fg
+  ol_color := ol
+  border_width := 1
+  invert_border := true
+  font_size := 1
+
+  show_val := true
+  header := 8
+  padding := 0
+
+  compression := 0
+  align := CENTER_ALIGN
+  string_pointer := @contents
+
+  set_value(0)
+  min_value := 0
+  max_value := 100
+
+  hi_threshold := 80
+  lo_threshold := 40
+
+  fill_color := color.blue
+  fill_hi_color := color.green
+  fill_lo_color := color.red
+
+  configured := true
+  last_time := getms()
+
+PUB is_configured():conf
+  conf := configured
+
+PUB set_coordinates(xt, yt, xb, yb)
+  xtop := xt
+  ytop := yt
+  xbot := xb
+  ybot := yb
+
+PUB get_coordinates() : coords
+  coords.BYTE[0] := xtop
+  coords.BYTE[1] := ytop
+  coords.BYTE[2] := xbot
+  coords.BYTE[3] := ybot
+
+PUB set_colors(bg, fg, ol)
+  bg_color := bg
+  fg_color := fg
+  ol_color := ol
+
+PUB get_colors(): bg, fg, ol
+  bg := bg_color
+  fg := fg_color
+  ol := ol_color
+
+PUB set_gauge_colors(fc,hc,lc)
+  fill_color := fc
+  fill_hi_color := hc
+  fill_lo_color := lc
+
+PUB set_limits(minv, maxv, l, h)
+  min_value := minv
+  max_value := maxv
+  hi_threshold := h
+  lo_threshold := l
+
+
+''+--------------------------------------------------------------------+
+''   EVENT HANDLING METHODS
+''+--------------------------------------------------------------------+
+PUB set_event_handler(Method)
+  event_handler := Method    'Sets the default event handler of this object
+
+PUB call_event_handler(Method)
+  Method(id)                 'Calls a passed event handler
+
+
+''+--------------------------------------------------------------------+
+''   OTHER METHODS
+''+--------------------------------------------------------------------+
+PUB set_border_width(bw)
+  border_width := bw
+
+PUB set_contents(addr)|c,i
+  'Set new contents
+  repeat i from 0 to MAX_CHARACTERS-1                   'Reserve last character place for the terminating 0
+    c := BYTE[addr][i]
+    if c <> 0
+      contents[i] := c
+    else
+      quit
+  contents[i+1] := 0
+  'string_pointer := @contents
+
+PUB enable_val(v)
+  show_val := v

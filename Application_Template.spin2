@@ -1,0 +1,236 @@
+{
+  Propeller2_GUI
+
+  Application Template
+
+  Author: José Rullán
+  Date: Nov 24, 2022
+}
+
+CON
+  _clkfreq = 200_000_000
+
+''+--------------------------------------------------------------------------+
+'' GUI application constants
+''+--------------------------------------------------------------------------+
+
+'Drawing Methods Constants
+  #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW
+  #5, SET_COL_ROW, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
+  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
+
+''Images
+  MAX_IMAGES  = 1
+  #0, LOGO_IMG
+
+''Screens
+  MAX_SCREENS = 1
+  #0, MENU_SCR
+
+''Buttons
+  MAX_BUTTONS = 1
+  #0, P_BTN
+
+''Text Displays
+  MAX_TEXTS   = 1
+  #0, MENU_0_TXT
+
+
+OBJ
+''+--------------------------------------------------------------------------+
+'' GUI framework objects
+''+--------------------------------------------------------------------------+
+                                                       '' CODE       VARIABLES
+  neotimer                      : "Neotimer"           '342 bytes    20 bytes
+  color                         : "Colors"             '160 bytes    4 bytes
+  util                          : "Utilities"
+  gui                           : "GUI"                '6204 bytes   732 bytes
+  image[MAX_IMAGES]             : "Image"
+  screen[MAX_SCREENS]           : "Screen"             '400 bytes    92 bytes
+  button[MAX_BUTTONS]           : "Button"             '1040 bytes   68 bytes
+  text[MAX_TEXTS]               : "Text_Display"       '1020 bytes   72 bytes
+  'iconbutton                    : "IconButton"
+  'gauge                         : "Gauge"              '876 bytes    108 bytes
+  'numkey                        : "Numkey"             '1820 bytes   76 bytes
+
+
+DAT
+''+--------------------------------------------------------------------------+
+'' GUI images files (Inkscape + Processsing)
+'' Must be RGB 565 in BGR order (R is byte 0)
+''+--------------------------------------------------------------------------+
+'Images
+'logo_black FILE "logo_black.p2"
+
+
+VAR
+  LONG drawing_method_pointer
+  WORD background_color
+
+
+PUB main()| x, inc
+  background_color := color.black
+  neotimer.init(1000)
+
+  init_gui()
+  debug("Finished init_gui()")
+
+  gui.draw()
+  debug("Finished drawing")
+
+
+  repeat
+    'GUI scan (handle touch events and updates)
+    gui.scan()
+
+
+    'Other continous logic here
+    '.....
+
+
+    'Periodic logic here (1s)
+    if neotimer.repeat_execution()
+      'Do something every second...
+
+
+''+--------------------------------------------------------------------+
+''   GUI initialization and configuration
+''+--------------------------------------------------------------------+
+PUB init_gui()
+''Initialization of the GUI object, screens and widgets
+
+  drawing_method_pointer := gui.get_drawing_methods()
+  gui.init(background_color, color.white, color.green, gui.PORTRAIT)
+
+
+''GUI Areas example configuration
+
+  gui.set_vertical_layout(40,160,40)
+  gui.set_horizontal_layout(40,160,40)
+  gui.set_area_bg(gui.TOP_LEFT, color.yellow)
+  gui.set_area_bg(gui.TOP_CENTER, color.blue)
+  gui.set_area_bg(gui.TOP_RIGHT, color.GREEN)
+  gui.set_area_bg(gui.MIDDLE_LEFT, color.white)
+  gui.set_area_bg(gui.MIDDLE_CENTER, color.black)
+  gui.set_area_bg(gui.MIDDLE_RIGHT, color.white)
+  gui.set_area_bg(gui.BOTTOM_LEFT, color.cyan)
+  gui.set_area_bg(gui.BOTTOM_CENTER, color.blue)
+  gui.set_area_bg(gui.BOTTOM_RIGHT, color.purple)
+
+
+
+''Button example configuration
+{
+  'PUB configure(i, xt, yt, w, h, bg, fg, ol)
+  button[P_BTN].configure(P_BTN,50,100,40,40,buttons_bg,color.black,color.grey)
+
+  button[P_BTN].set_drawing_methods(gui.get_drawing_methods())
+  button[P_BTN].set_mode(button.TOGGLE_MODE)
+  button[P_BTN].set_contents(String("P"))
+  button[P_BTN].set_font_size(2)
+  button[P_BTN].set_border_width(2)
+  button[P_BTN].set_enable(true)
+  button[P_BTN].set_event_handler(@button_event_handler)
+  gui.add_widget(@button[P_BTN].set_enable, @button[P_BTN].draw, @button[P_BTN].check_event)
+}
+
+
+''Icon Button example configuration
+{
+  'PUB set_image(image_pointer, width, height)
+  iconbutton.set_image(@menu_black,38,38)
+
+  'PUB configure(id, xpos, ypos, background_color, foreground_color, border_color)
+  iconbutton.configure(0,0,0,background_color,color.black,color.grey)
+
+  iconbutton.set_drawing_methods(gui.get_drawing_methods())
+  iconbutton.set_invert(true)
+  iconbutton.set_values(true,false)
+  iconbutton.set_mode(button.TOGGLE_MODE)
+  iconbutton.set_event_handler(@button_event_handler)
+  iconbutton.set_enable(true)
+  gui.add_widget(@iconbutton.set_enable, @iconbutton.draw, @iconbutton.check_event)
+}
+
+
+''Image example configuration
+{
+  'PUB set_image(image_pointer, width, height)
+  image[LOGO_IMG].set_image(@logo_black,96,40)
+
+  'PUB configure(id, xpos, ypos, background_color, foreground_color, border_color)
+  image[LOGO_IMG].configure(LOGO_IMG,72,0,background_color,color.black,color.grey)
+
+  image[LOGO_IMG].set_drawing_methods(gui.get_drawing_methods())
+  image[LOGO_IMG].set_enable(true)
+  gui.add_widget(@image[LOGO_IMG].set_enable, @image[LOGO_IMG].draw, @image[LOGO_IMG].check_event)
+}
+
+
+''Gauge example configuration
+{
+  'PUB configure(i, xt, yt, w, h, bg, fg, ol)
+  gauge.configure(0,15,231,30,78,background_color , color.white, color.grey)
+
+  gauge.set_drawing_methods(gui.get_drawing_methods())
+  gauge.set_limits(20, 100, 30, 70)
+  gauge.set_gauge_colors(color.yellow, color.green, color.red)
+  gauge.set_value(50)
+  gauge.enable_val(false)
+  gauge.set_enable(true)
+  gui.add_widget(@gauge.set_enable, @gauge.draw, @gauge.check_event)
+  debug("Added gauge")
+}
+
+
+''Screen example configuration
+{
+  'PUB configure(i, xt, yt, w, h, bg, fg, ol)
+  screen[MENU_SCR].configure(MENU_SCR,0,41,160,79,color.lighten(color.grey),color.black,color.grey)
+
+  screen[MENU_SCR].set_drawing_methods(gui.get_drawing_methods())
+  screen[MENU_SCR].set_enable(false)
+  gui.add_widget(@screen[MENU_SCR].set_enable, @screen[MENU_SCR].draw, @screen[MENU_SCR].check_event)
+  debug("Added Menu")
+}
+
+
+''Text display example configuration
+{
+  'PUB configure(i, xt, yt, w, h, bg, fg, ol)
+  text[MENU_0_TXT].configure(MENU_0_TXT, 0, 50, 160, 30, color.lighten(color.grey), color.black, color.grey)
+
+  text[MENU_0_TXT].set_drawing_methods(gui.get_drawing_methods())
+  text[MENU_0_TXT].set_contents(String("Toggle Green"))
+  text[MENU_0_TXT].set_align(text.LEFT_ALIGN)
+  text[MENU_0_TXT].set_padding(10)
+  text[MENU_0_TXT].set_compression(6)
+  text[MENU_0_TXT].set_border_width(0)
+  text[MENU_0_TXT].set_event_handler(@text_event_handler)
+  text[MENU_0_TXT].set_enable(true)
+  screen[MENU_SCR].add_widget(@text[MENU_0_TXT].set_enable, @text[MENU_0_TXT].draw, @text[MENU_0_TXT].check_event)
+  debug("Added menu 0")
+}
+
+
+''+--------------------------------------------------------------------+
+''   WIDGETS EVENT HANDLING METHODS
+''+--------------------------------------------------------------------+
+
+''Button example event handler
+''Button event handlers require id and value as parameters
+{
+PUB button_event_handler(id,val)
+ if (id == P_BTN)
+   'Do something....
+   if (val == true)
+     'Do something....
+}
+
+
+''Text Display example event handler
+{
+PUB text_event_handler(id)
+
+
+}

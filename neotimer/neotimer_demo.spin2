@@ -1,0 +1,22 @@
+{Neotimer repeat and debounce examples}
+
+
+CON
+
+
+OBJ
+  timer : "neotimer"
+
+PUB main()
+  timer.init(100)
+
+  'Toggles pin 56 every 100ms
+  repeat
+    if(timer.repeat_execution())
+      pintoggle(56)
+
+
+  'Debounce pinread(10) by 100ms
+  repeat
+    if(timer.debounce( pinread(10) ))
+      pintoggle(56)

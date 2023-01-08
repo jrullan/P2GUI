@@ -1,0 +1,513 @@
+{Utilities for Text Display of numbers and drawing}
+
+CON
+  DEGREE   = $80000000 / 180 '32bit degree unit
+
+'Drawing Methods Constants
+  #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
+  #6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
+  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
+
+OBJ
+  color : "Colors"
+
+PUB null()
+
+''+--------------------------------------------------------------------+
+''   Math methods
+''+--------------------------------------------------------------------+
+PUB exponent(a,b):r
+''Calculates a to the b power
+{
+  Spin 2 apparently does not provide an exponent
+  operator. This is an implementation of the
+  exponent operation.
+}
+  r := 1
+  if b == 0
+    return
+  else
+    repeat b
+      r := r * a
+
+PUB scale(x,xmin,xmax,ymin,ymax):y | b, yr, xr
+''Calculates y for a given x
+{
+  This function implements the line equation  y = m*x + b
+  for integer math.
+}
+  yr := (ymax > ymin)?(ymax-ymin): -1 * (ymin-ymax)
+  xr := (xmax > xmin)?(xmax-xmin): -1 * (xmin-xmax)
+  b := (ymax - (yr * xmax)/xr) 'm = yr/xr, but have to multiply first by xmax to prevent 0 when yr < xr (integer math)
+  y := x*yr/xr + b
+
+
+PUB pol_to_xy(l,angle):x,y
+''Calculates xy for l,angle
+{
+  This function returns the coordinates
+  of a point with polar coordinates l,angle
+}
+  angle := angle * DEGREE
+  ORG
+    QROTATE l, angle
+    GETQX x
+    GETQY y
+  END
+
+PUB rotate_point(xi,yi,a):x,y
+  a := a*DEGREE
+  ORG
+    SETQ yi
+    QROTATE xi, a
+    GETQX x
+    GETQY y
+  END
+
+
+{
+PUB rotate_image_GPT(orig, rotated, angle)|xc, yc, xr, yr, x, y, xa, ya, val
+''Algorithm to rotate 16x16 image (top-left is 0,0)
+  xc := 8
+  yc := 8
+  repeat x from 0 to 15
+    xa := x - xc
+    repeat y from 0 to 15
+      ya := y - yc
+      xr := (QCOS(xa, angle, 360) - QSIN(ya, angle, 360) + xc)
+      yr := (QSIN(xa, angle, 360) + QCOS(ya, angle, 360) + yc)
+      WORD[rotated][yr].[xr] := WORD[orig][y].[x]
+
+
+PUB rotate_image_affine(orig, rotated, angle)|xc, yc, xr, yr, x, y, xa, ya, factor, rot_0[2], rot_1[2]
+''Algorithm to rotate 16x16 image (top-left is 0,0) with "affine matrix"
+  xc := 8
+  yc := 8
+  factor := 1000
+
+  'Affine Matrix for Rotation
+  rot_0[0] := QCOS(factor, angle, 360)
+  rot_0[1] := -QSIN(factor, angle, 360)
+  rot_1[0] := QSIN(factor, angle, 360)
+  rot_1[1] := QCOS(factor, angle, 360)
+
+  repeat x from 0 to 15
+    xa := x - xc
+    repeat y from 0 to 15
+      ya := y - yc
+      xr := rot_0[0]*(xa)/factor + rot_0[1]*(ya)/factor + xc
+      yr := rot_1[0]*(xa)/factor + rot_1[1]*(ya)/factor + yc
+      WORD[rotated][yr].[xr] := WORD[orig][y].[x]
+}
+
+PUB rotate_image_rotxy(orig, rotated, angle)| xr, yr, x, y, xa, ya
+''Rotate 16x16 image (top-left is 0,0)
+  repeat x from 0 to 15
+    repeat y from 0 to 15
+
+      'yr,xr := ROTXY(x-8, y-8, angle*DEGREE)            'fastest, wrong order of return results
+      xr, yr := rotate_point(x-8, y-8, angle)          'slightly slower, correct order of results
+
+      'Constrain to avoid drawing defects
+      xr := -8 #> xr <# 7
+      yr := -8 #> yr <# 7
+
+      WORD[rotated][yr+8].[xr+8] := WORD[orig][y].[x]
+
+
+
+''+--------------------------------------------------------------------+
+''   Text Methods
+''+--------------------------------------------------------------------+
+PUB debug_string(s)|k, i
+  debug("Debugging string: ", uhex(s))
+  i := 0
+  repeat
+    k := BYTE[s][i++]
+    debug(uhex_byte(k))
+    if k == 0
+      quit
+
+PUB get_characters(buffer):characters|val
+''Get number of characters in buffer
+{
+  Checks buffer for characters until a terminating 0 is found
+}
+  repeat
+    val := BYTE[buffer + characters]
+    if val == 0
+      quit
+    else
+      characters++
+
+PUB get_non_space_characters(buffer):characters|val
+''Get number of characters in buffer
+{
+  Checks buffer for characters until a terminating 0 is found
+}
+  repeat
+    val := BYTE[buffer + characters]
+    if (val == 0) OR (val == $20)
+      quit
+    else
+      characters++
+
+
+PUB get_text_width(buffer, font_size, compression):w|n,c
+  n := 0
+  repeat
+    c := BYTE[buffer + n]
+
+    if c == 0
+      'debug(udec(n),udec(font_size), udec(compression), udec(w))
+      w := (n > 0 AND font_size == 2) ? (w-4) : w  'Adjustment for 8x16 font
+      quit
+
+    else
+      w := w + (font_size*8 - compression)
+      if (font_size == 2) AND ((c == ($6C)) OR (c == ($69)) OR (c == ($3A)) OR (c == ($2E))) 'i, l, . , :
+          w := w - 2
+      n++
+
+PUB get_text_height(font_size):h
+  h := font_size*8
+
+PUB get_digits(no):digits | x
+''Get the number of digits in no
+{
+  Calculates how many digits are in the integer number
+  passed.
+}
+  if no
+    x := no
+    repeat while x <> 0
+      x := x / 10
+      digits++
+
+PUB set_value(val,buffer)|n,digits,exp_val,char_val,prev_digits,extra,c
+''Fill buffer with digits of val
+{
+  Takes an integer val and convert it to
+  characters representing its digits in buffer
+
+  When val has less digits than the previous
+  value, it inserts white_spaces in place of the
+  extra digits so draw_text can fill over those
+  characters with background color.
+
+  For this feature to work, Text_Display must be
+  configured to enable buffering (enable_buffering(true))
+  otherwise the white space character won't be drawn.
+}
+  c := 0
+  extra := 0
+  digits := get_digits(val)
+  prev_digits := get_characters(buffer)
+
+  if Byte[buffer] == $20
+    prev_digits--
+
+  if val == 0
+    BYTE[buffer] := $30                          '0 character
+    digits := 1
+
+  else
+    if prev_digits > digits
+    'Fill with spaces to cover missing digits
+      extra := prev_digits - digits
+
+      repeat c from 0 to extra-1
+        BYTE[buffer + c] := $20                  'Insert spaces
+
+      repeat n from digits to 1
+        exp_val := exponent(10, n-1)
+        char_val := val / exp_val
+        val := val - char_val*exp_val
+        BYTE[buffer + (extra) + (digits-n)] := char_val + $30       'number character
+
+    else
+    'No need to fill spaces
+      repeat n from digits to 1
+        exp_val := exponent(10, n-1)
+        char_val := val / exp_val
+        val := val - char_val*exp_val
+        BYTE[buffer + (extra) + (digits-n)] := char_val + $30       'number character
+
+  BYTE[buffer+digits+extra] := 0                                    'string terminating 0
+
+
+PUB set_value_ns(val,buffer)|n,digits,exp_val,char_val
+''Fill buffer with digits of val
+{
+  Takes an integer val and convert it to
+  characters representing its digits in buffer
+}
+
+  digits := get_digits(val)
+
+  if val == 0
+    BYTE[buffer] := $30                          '0 character
+    digits := 1
+  else
+    'No need to fill spaces
+    repeat n from digits to 1
+      exp_val := exponent(10, n-1)
+      char_val := val / exp_val
+      val := val - char_val*exp_val
+      BYTE[buffer + (digits-n)] := char_val + $30       'number character
+
+  BYTE[buffer+digits] := 0                                    'string terminating 0
+
+
+PUB get_value(buffer):value|digits, char, d
+''Returns value of buffer
+{
+  Calculates the integer value of numerical characters
+  in buffer
+}
+  digits := get_characters(buffer)
+  repeat d from 0 to digits-1
+    char := BYTE[buffer+d] & $FF
+    if (char >= $30) AND (char <= $39)
+      value := (char - $30)*exponent(10,(digits-d-1)) + value
+
+PUB join_strings(string1_ptr, string2_ptr, result_ptr, max)|c1,c2,c,k
+  'First string
+  repeat c1 from 0 to max-1
+    k := Byte[string1_ptr + c1]
+    if k == 0
+      c := c1
+      quit
+    Byte[result_ptr + c1] := k
+
+  'Second string
+  repeat c2 from 0 to (max-c-1)
+    k := Byte[string2_ptr + c2]
+    if k == 0 OR (c+c2) >= (max-1)
+      c := c + c2
+      quit
+    Byte[result_ptr + c + c2] := k
+
+  'End character (0)
+  Byte[result_ptr + c] := 0
+
+
+
+PUB clear_string(addr, max)|i
+  repeat i from 0 to max
+    BYTE[addr][i] := 0
+
+''+--------------------------------------------------------------------+
+''   Drawing Methods
+''+--------------------------------------------------------------------+
+PUB draw_border(ptr,xt,yt,xb,yb,c,w,invert)| i, l_color, d_color
+{
+  ptr - pointer to drawing_method array of method pointers
+  xt,yt,xb,yb - coordinates of rectangle
+  c - color
+  w - border width
+  invert - flag to invert the border colors (to simulate sunken borders)
+}
+  if w > 0 AND xb > xt AND yb > yt
+    if invert
+      l_color := color.darken(c,4)
+      d_color := color.lighten(c,12)
+    else
+      l_color := color.lighten(c,12)
+      d_color := color.darken(c,4)
+
+    repeat i from 0 to w-1
+      'Left side
+      LONG[ptr][DRAW_LINE](xt+i,yt+i,xt+i,yb-i,l_color)
+      'Top side
+      LONG[ptr][DRAW_LINE](xt+i,yt+i,xb-i,yt+i,l_color)
+      'Right side
+      LONG[ptr][DRAW_LINE](xb-i,yt+i,xb-i,yb-i,d_color)
+      'Bottom side
+      LONG[ptr][DRAW_LINE](xt+i,yb-i,xb-i,yb-i,d_color)
+
+{
+DAT
+        execution_time LONG 0
+}
+PUB draw_text(ptr,x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color)| chars, n, w, h, k, k_old, xs, xe, execution_time
+{
+  Draws buffer text on screen at x,y position.
+
+  If an address is passed through previous_buffer, then
+  it will only draw the characters that differ
+  from the previous_buffer.
+
+  ---A special case is
+  the white space character ($20) which will fill
+  the area occupied by the white space with the
+  background color.---
+
+  ptr - pointer to drawing_method array of method pointers
+  x,y - coordinates of top left corner of text
+  buffer - address of text buffer (contents[])
+  previous_buffer - address of prev_contents[]
+  font_size - scaling factor for 8x8 font
+  compression - factor to reduce distance between characters in pixels
+  bg_color - background color
+  fg_color - foreground color
+}
+  LONG[ptr][SELECT_FONT_SIZE](1 #> font_size <# 2)
+
+  chars := get_characters(buffer)
+
+  w := font_size * 8
+  h := font_size * 8
+
+  'Set colors
+  LONG[ptr][SET_BACKGROUND_COLOR](bg_color)
+  LONG[ptr][SET_FOREGROUND_COLOR](fg_color)
+
+
+  if previous_buffer <> 0
+
+    'execution_time := getct()
+
+    'Draw characters that are different from previous value
+    repeat n from 0 to chars-1
+      k := BYTE[buffer+n]
+      k_old := BYTE[previous_buffer + n]
+      xs := x+(w-compression)*(n)
+      xe := xs + w
+
+      if (font_size == 2) AND ((k == ($6C)) OR (k == ($69)) OR (k == ($3A)) OR (k == ($2E))) 'i, l, . , :
+        x := x - 2
+        if k <> k_old   'when new character differs from previous character in buffer
+          LONG[ptr][SET_WINDOW](xs, y, xe, y+h)
+          LONG[ptr][DRAW_CHAR](k)
+          Byte[previous_buffer+n] := k
+        x := x - 2
+
+      else
+        if k <> k_old   'when new character differs from previous character in buffer
+          LONG[ptr][SET_WINDOW](xs, y, xe, y+h)
+          LONG[ptr][DRAW_CHAR](k)
+          Byte[previous_buffer+n] := k
+
+    'execution_time := 1_000  * (getct() - execution_time) / (clkfreq/1000)
+    'debug("Buffered text display time: ",udec(execution_time))
+
+  else
+
+    'execution_time_1 := getct()
+
+    'Draw all characters
+    repeat n from 0 to chars-1
+      k := BYTE[buffer+n]
+      xs := x+(w-compression)*(n)
+      xe := xs + w
+
+      if (font_size == 2) AND ((k == ($6C)) OR (k == ($69)) OR (k == ($3A)) OR (k == ($2E))) 'i, l, . , :
+        x := x - 2
+        LONG[ptr][SET_WINDOW](xs, y, xe, y+h)
+        LONG[ptr][DRAW_CHAR](k)
+        x := x - 2
+      else
+        LONG[ptr][SET_WINDOW](xs, y, xe, y+h)
+        LONG[ptr][DRAW_CHAR](k)
+
+    'execution_time_1 := 1_000  * (getct() - execution_time_1) / (clkfreq/1000)
+    'debug("Unbuffered text display time: ",udec(execution_time_1))
+
+
+PUB draw_image(image_pointer, xpos, ypos, width, height, transparent_color, ptr)| pixel, x, y
+{
+  image_pointer - address of image in hub memory
+  transparent_color - color to ignore when painting pixels
+  width - image width
+  height - image height
+  xpos - top-left coordinate of image
+  ypos - top-left coordinate of image
+  ptr - drawing_methods pointer
+}
+
+'Requires image in a DAT section using FILE that has been converted to 5-6-5 BGR
+'format. I used a sketch in Processing to resize and convert any image into this
+'format.
+
+' DAT
+' img   FILE  "image_file.p2"
+
+  if image_pointer == 0
+    return
+
+  repeat y from 0 to height-1
+    repeat x from 0 to width-1
+      pixel := WORD[image_pointer + (2*x + 2*y*width)]
+      if pixel <> transparent_color
+        LONG[ptr][DRAW_PIXEL](xpos+x,ypos+y,pixel)
+
+
+PUB draw_image_area(image_pointer, xpos, ypos, width, height, transparent_color, ptr, axt, ayt, axb, ayb) | area_pointer, ah, aw, x, y, pixel
+{
+  image_pointer - address of image
+  xpos - top-left coordinate of image
+  ypos - top-left coordinate of image
+  width - image width
+  height - image height
+  ptr - drawing_methods_pointer
+  axt - area top x  (absolute)
+  ayt - area top y
+  axb - area bottom x
+  ayb - area bottom y
+}
+
+  area_pointer := image_pointer + 2*(axt - xpos) + 2*(ayt - ypos)*width
+  'debug(udec(xpos), udec(axt), udec(ypos), udec(ayt))
+
+  ah := ayb - ayt
+  aw := axb - axt
+
+  'debug(udec(image_pointer), udec(area_pointer), udec(aw), udec(ah), udec(axt), udec(ayt), udec(axb), udec(ayb))
+
+  repeat y from 0 to ah-1
+    repeat x from 0 to aw-1
+      pixel := WORD[area_pointer + 2*x + 2*y*width]
+      if pixel <> transparent_color
+        LONG[ptr][DRAW_PIXEL](axt+x, ayt+y, pixel)
+
+
+PUB draw_darken_image(image_pointer, xpos, ypos, width, height, transparent_color, darken_factor, ptr) | pixel, x, y
+  if image_pointer == 0
+    return
+
+  repeat y from 0 to height-1
+    repeat x from 0 to width-1
+      pixel := WORD[image_pointer + (2*x + 2*y*width)]
+      if pixel <> transparent_color
+        pixel := color.darken(pixel, darken_factor)
+        LONG[ptr][DRAW_PIXEL](xpos+x,ypos+y,pixel)
+
+
+''+--------------------------------------------------------------------+
+''   Other Methods
+''+--------------------------------------------------------------------+
+PUB red_to_green(val, min, max):c | mid, r, g
+{
+  Returns a color from red to green based on the
+  value passed. Red represents the min parameter
+  and Green reprents the max parameter.
+
+  To invert the colors invert the passed parameters.
+
+  g - Green component will be proportional to val from min
+  to mid, which is the midpoint between min and max.
+  Green component in RGB 5-6-5 is 6 bits wide, so the max value
+  for green is $3F, or 63
+
+  r - Red component will be inversely proportional to val
+  from mid to max.
+  R component in RGB 5-6-5 is 5 bits wide, so the max value
+  for green is $1F, or 31
+}
+  mid := min + (max - min)/2
+  g := 0 #> scale(val, min, mid, 0, $3F) <# $3F
+  r := 0 #> scale(val, mid, max, $1F, 0) <# $1F
+  c :=   g<<5  +  r
+
+  'debug("red to green ",udec(val),udec(min), udec(max), Uhex_word(c))

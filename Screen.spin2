@@ -1,0 +1,176 @@
+{Screen Object}
+CON
+  MAX_WIDGETS = 8               'Max buttons per window (9 windows total)
+
+'Drawing Methods Constants
+  #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
+  #6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
+  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
+
+VAR
+'Attributes
+  long bg_color       'background color
+  long fg_color       'foreground color
+  long ol_color       'outline = border
+  word xtop
+  word ytop
+  word xbot
+  word ybot
+  byte border_width
+  byte invert_border
+  long event_coordinates        'word[0]=x word[1]=y
+  long my_event_handler
+  long drawing_method_pointer
+  byte id
+  byte enabled
+
+'Widgets method pointers
+  LONG widget_enable_method[MAX_WIDGETS]
+  LONG widget_draw_method[MAX_WIDGETS]
+  LONG widget_check_event_method[MAX_WIDGETS]
+  LONG widget_counter
+
+OBJ
+  util : "Utilities"
+
+PUB null()
+
+
+''+--------------------------------------------------------------------+
+''   WIDGET INTERFACE METHODS
+''+--------------------------------------------------------------------+
+PUB set_enable(e):w
+  if e
+    enabled := true
+  else
+    enabled := false
+
+{
+  Commented because when screen is not enabled, it doesn't pass the event
+  to its children. Hence there is no need to enable or disable all at once
+  since it prevents individual manipulation of children widgets.
+
+  if widget_counter > 0
+    repeat w from 0 to widget_counter-1
+      widget_enable_method[w](enabled)
+}
+
+{
+  Uncommented, because besides the event handling, there is the issue of
+  when a contained widget is updating it could draw over a different
+  screen.
+}
+  if widget_counter > 0
+    repeat w from 0 to widget_counter-1
+      widget_enable_method[w](enabled)
+
+
+PUB draw()| w
+  if enabled AND drawing_method_pointer <> 0
+
+    LONG[drawing_method_pointer][FILL_RECTANGLE](xtop,ytop,xbot,ybot,bg_color)
+
+    'BORDER
+    util.draw_border(drawing_method_pointer,xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
+
+
+    if widget_counter > 0
+      repeat w from 0 to widget_counter-1
+        widget_draw_method[w]()
+
+PUB check_event(coord):is_mine | x, y, i
+  if enabled
+    x := coord.WORD[0]
+    y := coord.WORD[1]
+    'debug("Screen pre-coords", udec(x), udec(y))
+
+
+    if (x >= xtop AND x <= xbot) AND (y >= ytop AND y <= ybot)
+      is_mine := true
+      event_coordinates := coord
+
+      'debug("Screen ", udec(x), udec(y))
+
+      if widget_counter > 0
+        repeat i from 0 to widget_counter-1
+          if widget_check_event_method[i](event_coordinates):1
+            quit
+
+PUB set_drawing_methods(METHOD_PTR)
+  drawing_method_pointer := METHOD_PTR
+
+
+''+--------------------------------------------------------------------+
+''   CONFIGURATION METHODS
+''+--------------------------------------------------------------------+
+PUB configure(s, xt, yt, w, h, bg, fg, ol)
+  id := s
+  xtop := xt
+  ytop := yt
+  xbot := w + xt 'xb
+  ybot := h + yt 'yb
+
+  bg_color := bg
+  fg_color := fg
+  ol_color := ol
+
+  border_width := 1
+  invert_border := false
+
+PUB set_id(i)
+  id := i
+
+PUB is_enabled():e
+  e := enabled
+
+PUB set_bg_color(color)
+  bg_color := color
+
+PUB set_fg_color(color)
+  fg_color := color
+
+PUB set_ol_color(color)
+  ol_color := color
+
+PUB get_bg_color():bg
+  bg := bg_color
+
+PUB get_fg_color():fg
+  fg := fg_color
+
+PUB get_ol_color():ol
+  ol := ol_color
+
+PUB set_ys(yt,yb)
+  ytop := yt
+  ybot := yb
+
+PUB set_xs(xt,xb)
+  xtop := xt
+  xbot := xb
+
+PUB set_coordinates(xt, yt, xb, yb)
+  xtop := xt
+  ytop := yt
+  xbot := xb
+  ybot := yb
+
+PUB get_coordinates() : xt, yt, xb, yb
+  xt := xtop
+  yt := ytop
+  xb := xbot
+  yb := ybot
+
+PUB set_border_width(bw)
+  border_width := bw
+
+
+''+--------------------------------------------------------------------+
+''   CONTAINER INTERFACE METHODS
+''+--------------------------------------------------------------------+
+PUB add_widget(enable_pointer, draw_pointer, check_event_pointer)
+  if widget_counter <= MAX_WIDGETS-1
+    widget_enable_method[widget_counter] := enable_pointer
+    widget_draw_method[widget_counter] := draw_pointer
+    widget_check_event_method[widget_counter] := check_event_pointer
+    widget_counter++
