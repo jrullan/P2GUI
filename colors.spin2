@@ -61,7 +61,7 @@ PUB transition(c, r, g, b):result | bc, gc, rc
 
   result := bc<<11 | gc<<5 | rc
   'debug(sdec(r), sdec(rc), sdec(g), sdec(gc), sdec(b), sdec(bc), ubin_word(result))
-  debug(sdec(rc), sdec(gc), sdec(bc), ubin_word(result))
+  'debug(sdec(rc), sdec(gc), sdec(bc), ubin_word(result))
 
 PUB set_color(r,g,b):c
   b := 0 #> b/8 <# $1F
