@@ -307,7 +307,7 @@ PRI draw_numkey(xs,ys)| col_width, row_height, xp, yp, row, col, number, x, y
 
   'Draw last row text
   repeat col from 0 to 2
-    number := (col==0) ? $3C : (col==1) ? $30 : $3D     'left arrow, zero and equal sign
+    number := ((col==0) ? $3C : ((col==1) ? $30 : $3D))     'left arrow, zero and equal sign
     x := (xs+xp)+ col_width * col
     y := (ys+yp)+ 3*row_height
     LONG[drawing_method_pointer][SET_WINDOW](x, y, x+16, y+16)
