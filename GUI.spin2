@@ -109,8 +109,6 @@ PUB init(bg, fg, ol, o) |  i
 PUB configure_display()
 '' Start display and touchscreen driver
 '' and clear the screen
-  display.SetLcdPins(25,23,24,27,26,23,-1,-1)    'SetLcdPins(ce, rst, dc, sda, clk, led, v3, gnd)
-  display.SetTouchPins(26,29,27,28,30)           'SetTouchPins(clk, cs, din, do, irq)
 
   'parameters: width,height,rotation,touchscreen
   display.Start(width, height, rotation, true)
@@ -123,8 +121,8 @@ PUB configure_display()
   display_configured := true
 
 
-PUB set_LCD_pins(ce,rst,dc,sda,clk,led,v3,gnd)
-  display.SetLcdPins(cd,rs,dc,sda,clk,led,v3,gnd)
+PUB set_TFT_pins(ce,rst,dc,sda,clk,led,v3,gnd)
+  display.SetLcdPins(ce,rst,dc,sda,clk,led,v3,gnd)
 
 PUB set_TS_pins(clk,cs,din,do,irq)
   display.SetTouchPins(clk,cs,din,do,irq)
