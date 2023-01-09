@@ -26,7 +26,6 @@ VAR
 
 'Method Pointers
   long event_handler            'Default event handler method pointer
-  long drawing_method_pointer   'Drawing method pointers
 
 'Internal state variables
   long last_time                'Stores touch event debouncer last time value
@@ -53,6 +52,7 @@ VAR
 OBJ
   color : "Colors"
   util : "Utilities"
+  graphics : "graphics"
 
 PUB null()
 
@@ -67,12 +67,12 @@ PUB set_enable(e)
 
 PUB draw()| w, h, tw, th, x, y
 ''This method draws the graphical representation of this widget type
-  if drawing_method_pointer <> 0
+  if enabled
     'FILL
-    LONG[drawing_method_pointer][FILL_RECTANGLE](xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
+    graphics.fill_rectangle(xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
 
     'BORDER
-    util.draw_border(drawing_method_pointer,xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
+    util.draw_border(xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
 
     'TEXT
     if string_pointer <> 0
@@ -85,10 +85,7 @@ PUB draw()| w, h, tw, th, x, y
       x := xtop + border_width + (w - tw)/2
       y := ytop + border_width + (h - th)/2
 
-      util.draw_text(drawing_method_pointer,x,y,string_pointer,0,font_size,compression,bg_color,fg_color)
-
-PUB set_drawing_methods(METHOD_PTR)
-  drawing_method_pointer := METHOD_PTR
+      util.draw_text(x,y,string_pointer,0,font_size,compression,bg_color,fg_color)
 
 PUB check_event(coord):is_mine | x, y
   if configured AND enabled

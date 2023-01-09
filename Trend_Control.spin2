@@ -57,6 +57,7 @@ VAR
 OBJ
   util : "Utilities"
   color: "Colors"
+  graphics : "graphics"
   trend: "Trend_Lean"
   button[MAX_BUTTONS] : "Button"
   text[MAX_TEXTS] : "Text_Display"
@@ -77,17 +78,17 @@ PUB set_enable(e):w
     repeat w from 0 to widget_counter-1
       widget_enable_method[w](enabled)
 
-  if drawing_method_pointer <> 0 AND initialized == 0
+  if initialized == 0
     init_ui()
     initialized := 1
 
 PUB draw()| w
-  if enabled AND drawing_method_pointer <> 0
+  if enabled
 
-    LONG[drawing_method_pointer][FILL_RECTANGLE](xtop,ytop,xbot,ybot,bg_color)
+    graphics.fill_rectangle(xtop,ytop,xbot,ybot,bg_color)
 
     'BORDER
-    util.draw_border(drawing_method_pointer,xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
+    util.draw_border(xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
 
 
     if widget_counter > 0
@@ -147,7 +148,6 @@ PRI init_ui()|x,y,w,h
 
   button[MODE_BTN].configure(MODE_BTN, x, y, w, h, color.lighten(color.grey,15), color.black, color.grey)
   button[MODE_BTN].set_border_width(2)
-  button[MODE_BTN].set_drawing_methods(drawing_method_pointer)
   button[MODE_BTN].set_compression(6)
   button[MODE_BTN].set_padding(2)
   button[MODE_BTN].set_contents(String("m"))
@@ -164,7 +164,6 @@ PRI init_ui()|x,y,w,h
   h := 30 'controls height
 
   text[VALUE_TXT].configure(VALUE_TXT, x, y, w, h, bg_color, fg_color, ol_color)
-  text[VALUE_TXT].set_drawing_methods(drawing_method_pointer)
   text[VALUE_TXT].set_contents(String("0"))
   text[VALUE_TXT].enable_buffering(false)
   text[VALUE_TXT].set_align(text.RIGHT_ALIGN)
@@ -184,7 +183,6 @@ PRI init_ui()|x,y,w,h
 
   button[MARKER_BTN].configure(MARKER_BTN, x, y, w, h, color.lighten(color.grey,15), color.black, color.grey)
   button[MARKER_BTN].set_border_width(2)
-  button[MARKER_BTN].set_drawing_methods(drawing_method_pointer)
   button[MARKER_BTN].set_contents(String("x"))
   button[MARKER_BTN].set_compression(6)
   button[MARKER_BTN].set_event_handler(@marker_event_handler)
@@ -200,7 +198,6 @@ PRI init_ui()|x,y,w,h
   h := (ybot - ytop) - 2*border_width - 2*30 'controls height
 
   trend.configure(0, data, max_data_values, x, y, w, h, bg_color, fg_color, ol_color)
-  trend.set_drawing_methods(drawing_method_pointer)
   trend.set_auto_scale(false)
   trend.set_border_width(2)
   trend.enable_marker(false)
@@ -214,7 +211,6 @@ PRI init_ui()|x,y,w,h
 
   button[LEFT_BTN].configure(LEFT_BTN, x, y, w, h, color.lighten(color.grey,15), color.black, color.grey)
   button[LEFT_BTN].set_border_width(2)
-  button[LEFT_BTN].set_drawing_methods(drawing_method_pointer)
   button[LEFT_BTN].set_contents(String("<"))
   button[LEFT_BTN].set_compression(6)
   button[LEFT_BTN].set_debounce(100)
@@ -231,7 +227,6 @@ PRI init_ui()|x,y,w,h
 
   button[RIGHT_BTN].configure(RIGHT_BTN, x, y, w, h, color.lighten(color.grey,15), color.black, color.grey)
   button[RIGHT_BTN].set_border_width(2)
-  button[RIGHT_BTN].set_drawing_methods(drawing_method_pointer)
   button[RIGHT_BTN].set_contents(String(">"))
   button[RIGHT_BTN].set_compression(6)
   button[RIGHT_BTN].set_debounce(100)
@@ -249,7 +244,6 @@ PRI init_ui()|x,y,w,h
   h := 30 'controls height
 
   text[POSITION_TXT].configure(POSITION_TXT, x, y, w, h, bg_color, fg_color, ol_color)
-  text[POSITION_TXT].set_drawing_methods(drawing_method_pointer)
   text[POSITION_TXT].set_contents(String("p"))
   text[POSITION_TXT].enable_buffering(false)
   text[POSITION_TXT].set_align(text.RIGHT_ALIGN)

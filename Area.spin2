@@ -17,12 +17,11 @@ VAR
   word xbot
   word ybot
   long my_event_handler
-  long drawing_method_pointer
   byte id
 
 
 OBJ
-
+  graphics : "graphics"
 
 PUB null()
 
@@ -79,9 +78,6 @@ PUB get_coordinates() : xt, yt, xb, yb
 ''+--------------------------------------------------------------------+
 ''   DRAWING METHODS
 ''+--------------------------------------------------------------------+
-PUB set_drawing_methods(METHOD_PTR)
-  drawing_method_pointer := METHOD_PTR
-
 PUB draw()
   'debug("Drawing area ",udec(xtop), udec(ytop), udec(xbot), udec(ybot), uhex(bg_color))
-  LONG[drawing_method_pointer][FILL_RECTANGLE](xtop,ytop,xbot,ybot,bg_color)
+  graphics.fill_rectangle(xtop,ytop,xbot,ybot,bg_color)

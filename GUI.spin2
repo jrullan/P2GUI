@@ -24,7 +24,6 @@ VAR
   long fg_color       'foreground color
   long ol_color       'outline = border
   long event_coordinates        'word[0]=x word[1]=y
-  long drawing_method[MAX_METHODS]
   long width          'driver requires it to be long
   long height         'driver requires it to be long
   byte orientation
@@ -50,13 +49,11 @@ OBJ
                                 'top left, top center, top right
                                 'middle left, middle center, middle right
                                 'bottom left, bottom center, bottom right
-
+  graphics     : "graphics"
 
 PUB null()
 
 
-PUB get_drawing_methods():addr
-  addr := @drawing_method
 
 ''+--------------------------------------------------------------------+
 ''   DISPLAY CONFIGURATION
@@ -80,27 +77,26 @@ PUB init(bg, fg, ol, o, cal) |  i
   fg_color := fg
   ol_color := ol
 
-  drawing_method[CLEAR_SCREEN]            := @display.clearScreen
-  drawing_method[SET_FOREGROUND_COLOR]    := @display.setFGColor
-  drawing_method[SET_BACKGROUND_COLOR]    := @display.setBGColor
-  drawing_method[SET_WINDOW]              := @display.setWindow
-  drawing_method[FILL_WINDOW]     := @display.fillWindow
-  drawing_method[SET_COL_ROW]     := @display.setColRow
-  drawing_method[DRAW_CHAR]       := @display.drawChar
-  drawing_method[DRAW_STRING]     := @display.drawString
-  drawing_method[DRAW_ICON]       := @display.drawIcon
-  drawing_method[DRAW_PIXEL]      := @display.drawPixel
-  drawing_method[DRAW_LINE]       := @display.drawLine
-  drawing_method[DRAW_CIRCLE]     := @display.drawCircle
-  drawing_method[DRAW_RECTANGLE]  := @display.drawRectangle
-  drawing_method[FILL_RECTANGLE]  := @display.fillRectangle
-  drawing_method[SELECT_FONT_SIZE]   := @display.SelectFontSize
-
+  graphics.set_pointer(CLEAR_SCREEN, @display.clearScreen)
+  graphics.set_pointer(SET_FOREGROUND_COLOR, @display.setFGColor)
+  graphics.set_pointer(SET_BACKGROUND_COLOR, @display.setBGColor)
+  graphics.set_pointer(SET_WINDOW, @display.setWindow)
+  graphics.set_pointer(FILL_WINDOW, @display.fillWindow)
+  graphics.set_pointer(SET_COL_ROW, @display.setColRow)
+  graphics.set_pointer(DRAW_CHAR, @display.drawChar)
+  graphics.set_pointer(DRAW_STRING, @display.drawString)
+  graphics.set_pointer(DRAW_ICON, @display.drawIcon)
+  graphics.set_pointer(DRAW_PIXEL, @display.drawPixel)
+  graphics.set_pointer(DRAW_LINE, @display.drawLine)
+  graphics.set_pointer(DRAW_CIRCLE, @display.drawCircle)
+  graphics.set_pointer(DRAW_RECTANGLE, @display.drawRectangle)
+  graphics.set_pointer(FILL_RECTANGLE, @display.fillRectangle)
+  graphics.set_pointer(SELECT_FONT_SIZE, @display.SelectFontSize)
 
   'set all windows colors to match canvas
   repeat i from 0 to 8
     area[i].configure(i,bg_color,fg_color,ol_color)
-    area[i].set_drawing_methods(@drawing_method)
+
 
   configure_display(cal)
   screen_saving_last_time := getms()
@@ -118,9 +114,13 @@ PUB configure_display(cal)
   else
     display.set_calibration(-3714, -3531, 3_935, 3_784)
 
-  display.setFGcolor(fg_color)  'set foreground color
-  display.setBGcolor(bg_color)  'set background color
-  display.clearScreen()
+  'display.setFGcolor(fg_color)  'set foreground color
+  'display.setBGcolor(bg_color)  'set background color
+  'display.clearScreen()
+
+  graphics.set_foreground_color(fg_color)
+  graphics.set_background_color(bg_color)
+  graphics.clear_screen()
 
   display_configured := true
 

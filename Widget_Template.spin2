@@ -48,6 +48,7 @@ VAR
 OBJ
   color : "Colors"
   util  : "Utilities"
+  graphics : "graphics"
 
 PUB null()
 
@@ -62,9 +63,9 @@ PUB set_enable(e)
 
 PUB draw()| w, h, x, y, tw, th
 ''This method draws the graphical representation of this widget type
-  if enabled AND drawing_method_pointer <> 0
+  if enabled
     'FILL
-    LONG[drawing_method_pointer][FILL_RECTANGLE](xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
+    graphics.fill_rectangle(xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
 
     'BORDER
     util.draw_border(drawing_method_pointer,xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)

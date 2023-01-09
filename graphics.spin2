@@ -1,0 +1,80 @@
+{
+  Graphics Object
+
+  Mapped driver methods
+}
+
+CON
+'Drawing Methods Constants
+  '#0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
+  '#6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
+  '#11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
+
+DAT
+''Kinda global variables - method pointers
+
+_clear_screen  long 0
+_set_foreground_color long 0
+_set_background_color long 0
+_set_window  long 0
+_fill_window long 0
+_set_col_row long 0
+_draw_char  long 0
+_draw_string  long 0
+_draw_icon  long 0
+_draw_pixel  long 0
+_draw_line  long 0
+_draw_circle  long 0
+_draw_rectangle  long 0
+_fill_rectangle  long 0
+_select_font_size long 0
+
+PUB set_pointer(index, ptr)|addr
+''Store method pointer in global variable
+  addr := @_clear_screen + 4*index
+  LONG[addr] := ptr
+
+PUB clear_screen()
+  _clear_screen()
+
+PUB set_foreground_color(bgr)
+  _set_foreground_color(bgr)
+
+PUB set_background_color(bgr)
+  _set_background_color(bgr)
+
+PUB set_window(xs,ys,xe,ye)
+  _set_window(xs,ys,xe,ye)
+
+PUB fill_window(bgr)
+  _fill_window(bgr)
+
+PUB set_col_row(xs,ys)
+  _set_col_row(xs,ys)
+
+PUB draw_char(char)
+  _draw_char(char)
+
+PUB draw_string(str)
+  _draw_string(str)
+
+PUB draw_icon(img, w, h)
+  _draw_icon(img,w,h)
+
+PUB draw_pixel(x, y, rgb)
+  _draw_pixel(x,y,rgb)
+
+PUB draw_line(xs,ys,xe,ye,rgb)
+  _draw_line(xs,ys,xe,ye,rgb)
+
+PUB draw_circle(xc,yc,r,rgb)
+  _draw_circle(xc,yc,r,rgb)
+
+PUB draw_rectangle(xs,ys,xe,ye,rgb)
+  _draw_rectangle(xs,ys,xe,ye,rgb)
+
+PUB fill_rectangle(xs,yx,xe,ye,rgb)
+  _fill_rectangle(xs,yx,xe,ye,rgb)
+
+PUB select_font_size(s)
+  _select_font_size(s)

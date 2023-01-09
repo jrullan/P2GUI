@@ -10,6 +10,7 @@ CON
 
 OBJ
   color : "Colors"
+  graphics : "graphics"
 
 PUB null()
 
@@ -300,7 +301,7 @@ PUB clear_string(addr, max)|i
 ''+--------------------------------------------------------------------+
 ''   Drawing Methods
 ''+--------------------------------------------------------------------+
-PUB draw_border(ptr,xt,yt,xb,yb,c,w,invert)| i, l_color, d_color
+PUB draw_border(xt,yt,xb,yb,c,w,invert)| i, l_color, d_color
 {
   ptr - pointer to drawing_method array of method pointers
   xt,yt,xb,yb - coordinates of rectangle
@@ -318,19 +319,18 @@ PUB draw_border(ptr,xt,yt,xb,yb,c,w,invert)| i, l_color, d_color
 
     repeat i from 0 to w-1
       'Left side
-      LONG[ptr][DRAW_LINE](xt+i,yt+i,xt+i,yb-i,l_color)
+      graphics.draw_line(xt+i,yt+i,xt+i,yb-i,l_color)
       'Top side
-      LONG[ptr][DRAW_LINE](xt+i,yt+i,xb-i,yt+i,l_color)
+      graphics.draw_line(xt+i,yt+i,xb-i,yt+i,l_color)
       'Right side
-      LONG[ptr][DRAW_LINE](xb-i,yt+i,xb-i,yb-i,d_color)
+      graphics.draw_line(xb-i,yt+i,xb-i,yb-i,d_color)
       'Bottom side
-      LONG[ptr][DRAW_LINE](xt+i,yb-i,xb-i,yb-i,d_color)
-
+      graphics.draw_line(xt+i,yb-i,xb-i,yb-i,d_color)
 {
 DAT
         execution_time LONG 0
 }
-PUB draw_text(ptr,x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color)| chars, n, w, h, k, k_old, xs, xe, execution_time
+PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color)| chars, n, w, h, k, k_old, xs, xe, execution_time
 {
   Draws buffer text on screen at x,y position.
 
@@ -352,17 +352,15 @@ PUB draw_text(ptr,x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_c
   bg_color - background color
   fg_color - foreground color
 }
-  LONG[ptr][SELECT_FONT_SIZE](1 #> font_size <# 2)
-
+  graphics.select_font_size(1 #> font_size <# 2)
   chars := get_characters(buffer)
 
   w := font_size * 8
   h := font_size * 8
 
   'Set colors
-  LONG[ptr][SET_BACKGROUND_COLOR](bg_color)
-  LONG[ptr][SET_FOREGROUND_COLOR](fg_color)
-
+  graphics.set_background_color(bg_color)
+  graphics.set_foreground_color(fg_color)
 
   if previous_buffer <> 0
 
@@ -378,15 +376,15 @@ PUB draw_text(ptr,x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_c
       if (font_size == 2) AND ((k == ($6C)) OR (k == ($69)) OR (k == ($3A)) OR (k == ($2E))) 'i, l, . , :
         x := x - 2
         if k <> k_old   'when new character differs from previous character in buffer
-          LONG[ptr][SET_WINDOW](xs, y, xe, y+h)
-          LONG[ptr][DRAW_CHAR](k)
+          graphics.set_window(xs, y, xe, y+h)
+          graphics.draw_char(k)
           Byte[previous_buffer+n] := k
         x := x - 2
 
       else
         if k <> k_old   'when new character differs from previous character in buffer
-          LONG[ptr][SET_WINDOW](xs, y, xe, y+h)
-          LONG[ptr][DRAW_CHAR](k)
+          graphics.set_window(xs, y, xe, y+h)
+          graphics.draw_char(k)
           Byte[previous_buffer+n] := k
 
     'execution_time := 1_000  * (getct() - execution_time) / (clkfreq/1000)
@@ -404,18 +402,18 @@ PUB draw_text(ptr,x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_c
 
       if (font_size == 2) AND ((k == ($6C)) OR (k == ($69)) OR (k == ($3A)) OR (k == ($2E))) 'i, l, . , :
         x := x - 2
-        LONG[ptr][SET_WINDOW](xs, y, xe, y+h)
-        LONG[ptr][DRAW_CHAR](k)
+        graphics.set_window(xs, y, xe, y+h)
+        graphics.draw_char(k)
         x := x - 2
       else
-        LONG[ptr][SET_WINDOW](xs, y, xe, y+h)
-        LONG[ptr][DRAW_CHAR](k)
+        graphics.set_window(xs, y, xe, y+h)
+        graphics.draw_char(k)
 
     'execution_time_1 := 1_000  * (getct() - execution_time_1) / (clkfreq/1000)
     'debug("Unbuffered text display time: ",udec(execution_time_1))
 
 
-PUB draw_image(image_pointer, xpos, ypos, width, height, transparent_color, ptr)| pixel, x, y
+PUB draw_image(image_pointer, xpos, ypos, width, height, transparent_color)| pixel, x, y
 {
   image_pointer - address of image in hub memory
   transparent_color - color to ignore when painting pixels
@@ -440,10 +438,10 @@ PUB draw_image(image_pointer, xpos, ypos, width, height, transparent_color, ptr)
     repeat x from 0 to width-1
       pixel := WORD[image_pointer + (2*x + 2*y*width)]
       if pixel <> transparent_color
-        LONG[ptr][DRAW_PIXEL](xpos+x,ypos+y,pixel)
+        graphics.draw_pixel(xpos+x,ypos+y,pixel)
 
 
-PUB draw_image_area(image_pointer, xpos, ypos, width, height, transparent_color, ptr, axt, ayt, axb, ayb) | area_pointer, ah, aw, x, y, pixel
+PUB draw_image_area(image_pointer, xpos, ypos, width, height, transparent_color, axt, ayt, axb, ayb) | area_pointer, ah, aw, x, y, pixel
 {
   image_pointer - address of image
   xpos - top-left coordinate of image
@@ -469,10 +467,10 @@ PUB draw_image_area(image_pointer, xpos, ypos, width, height, transparent_color,
     repeat x from 0 to aw-1
       pixel := WORD[area_pointer + 2*x + 2*y*width]
       if pixel <> transparent_color
-        LONG[ptr][DRAW_PIXEL](axt+x, ayt+y, pixel)
+        graphics.draw_pixel(axt+x, ayt+y, pixel)
 
 
-PUB draw_darken_image(image_pointer, xpos, ypos, width, height, transparent_color, darken_factor, ptr) | pixel, x, y
+PUB draw_darken_image(image_pointer, xpos, ypos, width, height, transparent_color, darken_factor) | pixel, x, y
   if image_pointer == 0
     return
 
@@ -481,7 +479,7 @@ PUB draw_darken_image(image_pointer, xpos, ypos, width, height, transparent_colo
       pixel := WORD[image_pointer + (2*x + 2*y*width)]
       if pixel <> transparent_color
         pixel := color.darken(pixel, darken_factor)
-        LONG[ptr][DRAW_PIXEL](xpos+x,ypos+y,pixel)
+        graphics.draw_pixel(xpos+x,ypos+y,pixel)
 
 
 ''+--------------------------------------------------------------------+

@@ -27,7 +27,6 @@ VAR
 
 'Method Pointers
   long event_handler            'Default event handler method pointer
-  long drawing_method_pointer   'Drawing method pointers
 
 'Internal state variables
   long last_time                'Stores touch event debouncer last time value
@@ -45,6 +44,7 @@ VAR
 OBJ
   color : "Colors"
   util  : "Utilities"
+  graphics : "graphics"
 
 PUB null()
 
@@ -59,14 +59,14 @@ PUB set_enable(e)
 
 PUB draw()| w, h, x, y, tw, th
 ''This method draws the graphical representation of this widget type
-  if enabled AND drawing_method_pointer <> 0 AND image_pointer <> 0
+  if enabled AND image_pointer <> 0
 
     w := (xbot-xtop) - border_width*2
     h := (ybot-ytop) - border_width*2
 
     x := xtop + border_width + (w - image_width)/2
     y := ytop + border_width + (h - image_height)/2
-    util.draw_image(image_pointer, xtop, ytop, image_width, image_height, bg_color, drawing_method_pointer)
+    util.draw_image(image_pointer, xtop, ytop, image_width, image_height, bg_color)
 
 PUB check_event(coord):is_mine | x, y
   if configured AND enabled AND events_enabled
@@ -80,8 +80,6 @@ PUB check_event(coord):is_mine | x, y
           event_handler(id)                               'call the event handler and pass along id of button
           last_time := getms()                            'reset debounce timer
 
-PUB set_drawing_methods(METHOD_PTR)
-  drawing_method_pointer := METHOD_PTR
 
 
 ''+--------------------------------------------------------------------+

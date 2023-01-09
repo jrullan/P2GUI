@@ -31,7 +31,6 @@ VAR
 
 'Method Pointers
   long event_handler            'Default event handler method pointer
-  long drawing_method_pointer   'Drawing method pointers
 
 'Internal state variables
   long last_time                'Stores touch event debouncer last time value
@@ -58,6 +57,7 @@ VAR
 OBJ
   color : "Colors"
   util  : "Utilities"
+  graphics : "graphics"
 
 PUB null()
 
@@ -72,7 +72,7 @@ PUB set_enable(e)
 
 PUB draw()| w, h, tw, th, x, y
 ''This method draws the graphical representation of this widget type
-  if enabled AND drawing_method_pointer <> 0
+  if enabled
     'Calculate starting coordinates
     x := xtop
     y := ytop
@@ -83,9 +83,6 @@ PUB draw()| w, h, tw, th, x, y
     'reset debouncer timer
     last_time := getms()
 
-
-PUB set_drawing_methods(METHOD_PTR)
-  drawing_method_pointer := METHOD_PTR
 
 PUB check_event(coord):is_mine | x, y, key,kh,yk
   kh := (ybot - ytop)/5  'keys height
@@ -247,7 +244,7 @@ PRI draw_display()| digits, row_height, x, y, xw, yh, n, char_val, exp_val, val,
   y := ytop+border_width*2
   xw := (xbot - xtop)-4*border_width
   yh := row_height - border_width*3
-  LONG[drawing_method_pointer][FILL_RECTANGLE](x, y, x+xw, y+yh, display_bg)
+  graphics.fill_rectangle(x, y, x+xw, y+yh, display_bg)
 
   o := 4  'compression
   x := x + xw - (digits * (16-o)) - o
@@ -255,20 +252,20 @@ PRI draw_display()| digits, row_height, x, y, xw, yh, n, char_val, exp_val, val,
   val := value
 
   'Draw the value
-  LONG[drawing_method_pointer][SELECT_FONT_SIZE](font_size)
-  LONG[drawing_method_pointer][SET_FOREGROUND_COLOR](display_fg)
-  LONG[drawing_method_pointer][SET_BACKGROUND_COLOR](display_bg)
+  graphics.select_font_size(font_size)
+  graphics.set_foreground_color(display_fg)
+  graphics.set_background_color(display_bg)
 
   if val == 0
-    LONG[drawing_method_pointer][SET_WINDOW](x-16, y, x+16, y+16)
-    LONG[drawing_method_pointer][DRAW_CHAR]($30)
+    graphics.set_window(x-16, y, x+16, y+16)
+    graphics.draw_char($30)
   else
     repeat n from digits to 1
       exp_val := util.exponent(10, n-1)
       char_val := val / exp_val
       val := val - char_val*exp_val
-      LONG[drawing_method_pointer][SET_WINDOW](x + ((16-o)*(digits-n))-o, y, x+16, y+16)
-      LONG[drawing_method_pointer][DRAW_CHAR](char_val+ $30)
+      graphics.set_window(x + ((16-o)*(digits-n))-o, y, x+16, y+16)
+      graphics.draw_char(char_val+ $30)
 
 PRI draw_numkey(xs,ys)| col_width, row_height, xp, yp, row, col, number, x, y
   col_width := (xbot-xtop) / 3
@@ -279,21 +276,21 @@ PRI draw_numkey(xs,ys)| col_width, row_height, xp, yp, row, col, number, x, y
   ''Draw borders
   'numkey outside borders
   invert_border := false
-  util.draw_border(drawing_method_pointer,xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
+  util.draw_border(xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
 
   'display inner borders
   invert_border := true
-  util.draw_border(drawing_method_pointer,xtop+border_width,ytop+border_width,xbot-border_width,ytop+row_height,ol_color,border_width,invert_border)
+  util.draw_border(xtop+border_width,ytop+border_width,xbot-border_width,ytop+row_height,ol_color,border_width,invert_border)
 
   ''Fill numkey background
-  LONG[drawing_method_pointer][FILL_RECTANGLE](xtop+border_width,ytop+row_height,xbot-border_width,ybot-border_width,bg_color)
+  graphics.fill_rectangle(xtop+border_width,ytop+row_height,xbot-border_width,ybot-border_width,bg_color)
 
   ''Draw numbers 1 to 9 text
   'Set colors for drawing functions
-  LONG[drawing_method_pointer][SET_FOREGROUND_COLOR](fg_color)
-  LONG[drawing_method_pointer][SET_BACKGROUND_COLOR](bg_color)
+  graphics.set_foreground_color(fg_color)
+  graphics.set_background_color(bg_color)
 
-  LONG[drawing_method_pointer][SELECT_FONT_SIZE](font_size)
+  graphics.select_font_size(font_size)
 
   'Starting y for first row of keys
   ys := ytop+row_height
@@ -302,16 +299,16 @@ PRI draw_numkey(xs,ys)| col_width, row_height, xp, yp, row, col, number, x, y
       number := row*3 + col+1 + $30
       x := (xs+xp)+ col_width * col
       y := (ys+yp)+ row_height * row
-      LONG[drawing_method_pointer][SET_WINDOW](x, y, x+16, y+16)
-      LONG[drawing_method_pointer][DRAW_CHAR](number)
+      graphics.set_window(x, y, x+16, y+16)
+      graphics.draw_char(number)
 
   'Draw last row text
   repeat col from 0 to 2
     number := ((col==0) ? $3C : ((col==1) ? $30 : $3D))     'left arrow, zero and equal sign
     x := (xs+xp)+ col_width * col
     y := (ys+yp)+ 3*row_height
-    LONG[drawing_method_pointer][SET_WINDOW](x, y, x+16, y+16)
-    LONG[drawing_method_pointer][DRAW_CHAR](number)
+    graphics.set_window(x, y, x+16, y+16)
+    graphics.draw_char(number)
 
 PRI get_key_pressed(x,y):key|kw,kh,yk
   kh := (ybot - ytop)/5  'keys height
