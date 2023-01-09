@@ -225,7 +225,7 @@ PUB init_gui()
 
   text[COUNTER_TXT].configure(COUNTER_TXT, 200, 45, 35, 40, color.black, color.green, color.grey)
   text[COUNTER_TXT].set_contents(String("0"))
-  text[COUNTER_TXT].enable_buffering(false)
+  text[COUNTER_TXT].enable_buffering(true)
   text[COUNTER_TXT].set_align(text.RIGHT_ALIGN)
   text[COUNTER_TXT].set_padding(4)
   text[COUNTER_TXT].set_compression(6)
