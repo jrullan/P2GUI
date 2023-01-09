@@ -76,7 +76,7 @@ VAR
   WORD BACKGROUND_COLOR
   BYTE trend_values[MAX_DATA_VALUES]
   LONG last_time
-
+  BYTE btn_value[4]
 
 PUB main()| inc, sine_val
   current_screen := SCREEN_1
@@ -470,14 +470,14 @@ PUB needle_angle_event_handler(id, val)
   numkey.set_enable(true)
   numkey.draw()
 
-PUB numkey_needle_event_handler(id, val)|buffer[3]
+PUB numkey_needle_event_handler(id, val)
 'Event handler for the button in screen 2
   if val <> -1
     val := 0 #> val <# 359
 
     'Set button value
-    util.set_value(val, @buffer)
-    button[SET_ANGLE_BTN].set_contents(@buffer)
+    util.set_value(val, @btn_value)
+    button[SET_ANGLE_BTN].set_contents(@btn_value)
 
     'draw screen
     screen[SCREEN_2].set_enable(true)
