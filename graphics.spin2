@@ -1,18 +1,20 @@
 {
   Graphics Object
 
-  Mapped driver methods
-}
+  Provides wrapper methods for the driver methods
+  Driver methods are mapped using set_pointer(index,ptr)
 
-CON
-'Drawing Methods Constants
+  The GUI object uses these constants to map the method with the correct variable
+  (they should match the order of the variables in the DAT section)
+
+  'Drawing Methods Constants
   '#0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
   '#6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
   '#11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
+}
 
 DAT
-''Kinda global variables - method pointers
-
+'These variables hold a method pointer to the drivers corresponding methods
 _clear_screen  long 0
 _set_foreground_color long 0
 _set_background_color long 0

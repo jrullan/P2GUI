@@ -11,7 +11,7 @@ CON
   #3, MIDDLE_LEFT, MIDDLE_CENTER, MIDDLE_RIGHT
   #6, BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT
 
-'Drawing Methods Constants
+'Drawing Methods Constants (for mapping driver methods to graphics methods)
   #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
   #6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
   #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
@@ -114,13 +114,9 @@ PUB configure_display(cal)
   else
     display.set_calibration(-3714, -3531, 3_935, 3_784)
 
-  'display.setFGcolor(fg_color)  'set foreground color
-  'display.setBGcolor(bg_color)  'set background color
-  'display.clearScreen()
-
-  graphics.set_foreground_color(fg_color)
-  graphics.set_background_color(bg_color)
-  graphics.clear_screen()
+  display.setFGcolor(fg_color)  'set foreground color
+  display.setBGcolor(bg_color)  'set background color
+  display.clearScreen()
 
   display_configured := true
 

@@ -14,11 +14,6 @@ CON
 '' GUI application constants
 ''+--------------------------------------------------------------------------+
 
-'Drawing Methods Constants
-  #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW
-  #5, SET_COL_ROW, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
-  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
-
 ''Images
   MAX_IMAGES  = 1
   #0, LOGO_IMG
