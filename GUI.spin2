@@ -61,7 +61,7 @@ PUB get_drawing_methods():addr
 ''+--------------------------------------------------------------------+
 ''   DISPLAY CONFIGURATION
 ''+--------------------------------------------------------------------+
-PUB init(bg, fg, ol, o) |  i
+PUB init(bg, fg, ol, o, cal) |  i
 '' Initializes the colors of the Canvas
 '' and then starts the display driver
 
@@ -102,18 +102,22 @@ PUB init(bg, fg, ol, o) |  i
     area[i].configure(i,bg_color,fg_color,ol_color)
     area[i].set_drawing_methods(@drawing_method)
 
-  configure_display()
+  configure_display(cal)
   screen_saving_last_time := getms()
 
 
-PUB configure_display()
+PUB configure_display(cal)
 '' Start display and touchscreen driver
 '' and clear the screen
 
   'parameters: width,height,rotation,touchscreen
   display.Start(width, height, rotation, true)
 
-  display.set_calibration(4_294_963_582, 4_294_963_765, 3_935, 3_784)
+  if cal
+    display.calibrateTouch()
+  else
+    display.set_calibration(-3714, -3531, 3_935, 3_784)
+
   display.setFGcolor(fg_color)  'set foreground color
   display.setBGcolor(bg_color)  'set background color
   display.clearScreen()

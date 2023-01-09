@@ -551,6 +551,10 @@ PUB calibrateTouch() | xstr, ystr, tx,ty,tx_topx,ty_topy,tx_botx,ty_boty,spotx,s
   xstr := width/2-9*8                                   ' approx center of screen for text (18 chars 8x8 font)
   ystr := height/2-4
 
+  setBGcolor(black)
+  setFGcolor(white)
+  SelectFontSize(1)
+
   clearScreen()
   clearButtons()
   drawstring(xstr, ystr, string("CALIBRATE TOP LEFT"))
@@ -577,6 +581,10 @@ PUB calibrateTouch() | xstr, ystr, tx,ty,tx_topx,ty_topy,tx_botx,ty_boty,spotx,s
   cal_divy:= (ty_boty - ty_topy) * height / (cal_boty - cal_topy)
   cal_offx:= tx_topx - cal_topx * cal_divx / width
   cal_offy:= ty_topy - cal_topy * cal_divy / height
+
+  debug("Touchscreen Calibration data: ")
+  debug(sdec(cal_divx), sdec(cal_divy), sdec(cal_offx), sdec(cal_offy))
+
   calibrated:= true
 
   clearscreen()
