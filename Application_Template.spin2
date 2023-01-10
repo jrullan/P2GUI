@@ -23,7 +23,6 @@ OBJ
 '' GUI framework objects
 ''+--------------------------------------------------------------------------+
                                                        '' CODE       VARIABLES
-  neotimer                      : "Neotimer"           '342 bytes    20 bytes
   color                         : "Colors"             '160 bytes    4 bytes
   util                          : "Utilities"
   graphics                      : "Graphics"
@@ -43,27 +42,17 @@ VAR
 
 PUB main()| x, inc
   background_color := color.black
-  neotimer.init(1000)
-
   init_gui()
   debug("Finished init_gui()")
-
   gui.draw()
   debug("Finished drawing")
 
-
   repeat
+
+    'Continous logic here...
+
     'GUI scan (handle touch events and updates)
     gui.scan()
-
-
-    'Other continous logic here
-    '.....
-
-
-    'Periodic logic here (1s)
-    if neotimer.repeat_execution()
-      'Do something every second...
 
 
 ''+--------------------------------------------------------------------+
