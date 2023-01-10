@@ -17,7 +17,6 @@ CON
 ''Buttons
   #0, P_BTN, MAX_BUTTONS
 
-
 OBJ
 ''+--------------------------------------------------------------------------+
 '' GUI framework objects
@@ -54,7 +53,6 @@ PUB main()| x, inc
     'GUI scan (handle touch events and updates)
     gui.scan()
 
-
 ''+--------------------------------------------------------------------+
 ''   GUI initialization and configuration
 ''+--------------------------------------------------------------------+
@@ -69,8 +67,7 @@ PUB init_gui()
   gui.set_screen_saving(10) 'Set screen saving time in seconds
   debug("Initialized GUI")
 
-
-''GUI Areas example configuration
+  'GUI Areas example configuration
   gui.set_vertical_layout(40,160,40)
   gui.set_horizontal_layout(40,160,40)
   gui.set_area_bg(gui.TOP_LEFT, color.yellow)
@@ -83,7 +80,7 @@ PUB init_gui()
   gui.set_area_bg(gui.BOTTOM_CENTER, color.blue)
   gui.set_area_bg(gui.BOTTOM_RIGHT, color.purple)
 
-''Button example configuration
+  'Button example configuration
   button[P_BTN].configure(P_BTN,70,100,100,40,color.grey,color.black,color.grey)  '(i, xt, yt, w, h, bg, fg, ol)
   button[P_BTN].set_mode(button.TOGGLE_MODE)
   button[P_BTN].set_contents(String("P"))
@@ -99,6 +96,9 @@ PUB init_gui()
 ''   WIDGETS EVENT HANDLING METHODS
 ''+--------------------------------------------------------------------+
 ''Button example event handler
+''This method could be use for multiple buttons
+''that can be identified by the id parameter
+''returned by the button.
 PUB button_event_handler(id,val)
   if (id == P_BTN)
     'Do something....
