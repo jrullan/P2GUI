@@ -1,5 +1,11 @@
 {
   P2GUI Demo Application
+
+  A simple application that demonstrates all the widgets.
+  Memory usage is
+                             Code/Data                  Variables
+  PropellerTool 2.7.0   -    55,712                     4,548
+  FlexProp 5.9.23       -    102,260
 }
 
 CON
@@ -143,7 +149,7 @@ PUB init_gui()
   gui.set_TS_pins(26,29,27,28,30)            '(clk, cs, din, do, irq)
 
   'Initialize the gui element and driver
-  gui.init(BACKGROUND_COLOR, color.white, color.green, gui.PORTRAIT, false) '(bg, fg, ol, o, cal?)
+  gui.init(BACKGROUND_COLOR, color.white, color.green, gui.PORTRAIT, true) '(bg, fg, ol, o, cal?)
   gui.set_screen_saving(0) 'Set screen saving time in seconds
   debug("Initialized GUI")
 
@@ -460,6 +466,10 @@ PUB numkey_needle_event_handler(id, val)
 
     'Update dial
     dial.clear_hand()
+    if BACKGROUND_COLOR == color.white
+      dial.set_fg_color(color.darken(color.set_color(50,190,255),8))
+    else
+      dial.set_fg_color(util.red_to_green(val,0,100))
     dial.update(val)
 
     'disable and reset numkey

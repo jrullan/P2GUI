@@ -15,6 +15,14 @@
 
 DAT
 'These variables hold a method pointer to the drivers corresponding methods
+{
+  The nice thing about this is that variables declared in a DAT section
+  keep their value, as they are common to all instances of the object
+  (as with the methods), so this whole object works as a Singleton Object
+  that is shared among all other objects that instance it.
+
+  This is why only GUI has to call set_pointer to store the method pointers.
+}
 _clear_screen  long 0
 _set_foreground_color long 0
 _set_background_color long 0
@@ -30,6 +38,7 @@ _draw_circle  long 0
 _draw_rectangle  long 0
 _fill_rectangle  long 0
 _select_font_size long 0
+
 
 PUB set_pointer(index, ptr)|addr
 ''Store method pointer in global variable
