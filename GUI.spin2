@@ -49,7 +49,7 @@ OBJ
                                 'top left, top center, top right
                                 'middle left, middle center, middle right
                                 'bottom left, bottom center, bottom right
-  graphics     : "graphics"
+  graphics     : "Graphics"
 
 PUB null()
 
@@ -93,10 +93,9 @@ PUB init(bg, fg, ol, o, cal) |  i
   graphics.set_pointer(FILL_RECTANGLE, @display.fillRectangle)
   graphics.set_pointer(SELECT_FONT_SIZE, @display.SelectFontSize)
 
-  'set all windows colors to match canvas
+  'set all areas colors to match canvas
   repeat i from 0 to 8
     area[i].configure(i,bg_color,fg_color,ol_color)
-
 
   configure_display(cal)
   screen_saving_last_time := getms()

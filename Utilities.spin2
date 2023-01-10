@@ -5,7 +5,7 @@ CON
 
 OBJ
   color : "Colors"
-  graphics : "graphics"
+  graphics : "Graphics"
 
 PUB null()
 

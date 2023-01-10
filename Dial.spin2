@@ -65,7 +65,7 @@ OBJ
   color : "Colors"
   util  : "Utilities"
   neo   : "Neotimer"
-  graphics : "graphics"
+  graphics : "Graphics"
 
 PUB null()
 

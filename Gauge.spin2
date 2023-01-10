@@ -52,7 +52,7 @@ VAR
 OBJ
   color : "Colors"
   util  : "Utilities"
-  graphics : "graphics"
+  graphics : "Graphics"
 
 PUB null()
 

@@ -52,7 +52,7 @@ VAR
 OBJ
   util : "Utilities"
   color: "Colors"
-  graphics : "graphics"
+  graphics : "Graphics"
   trend: "Trend_Lean"
   button[MAX_BUTTONS] : "Button"
   text[MAX_TEXTS] : "Text_Display"

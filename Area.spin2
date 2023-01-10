@@ -14,7 +14,7 @@ VAR
 
 
 OBJ
-  graphics : "graphics"
+  graphics : "Graphics"
 
 PUB null()
 
