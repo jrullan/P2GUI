@@ -4,7 +4,7 @@
   Application Template
 
   Author: José Rullán
-  Date: Nov 24, 2022
+  Date: January 10, 2023
 }
 
 CON
@@ -89,7 +89,6 @@ PUB init_gui()
   button[P_BTN].set_enable(true)
   button[P_BTN].set_event_handler(@button_event_handler)
   gui.add_widget(@button[P_BTN].set_enable, @button[P_BTN].draw, @button[P_BTN].check_event)
-
 
 
 ''+--------------------------------------------------------------------+
