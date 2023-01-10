@@ -37,10 +37,10 @@ DAT
 'logo_black FILE "logo_black.p2"
 
 VAR
-  WORD background_color
+  WORD BACKGROUND_COLOR
 
 PUB main()| x, inc
-  background_color := color.black
+  BACKGROUND_COLOR := color.black
   init_gui()
   debug("Finished init_gui()")
   gui.draw()
