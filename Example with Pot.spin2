@@ -1,0 +1,529 @@
+{
+  P2GUI Demo Application
+
+  A simple application that demonstrates all the widgets.
+  Memory usage is
+                             Code/Data                  Variables
+  PropellerTool 2.7.0   -    55,712                     4,548
+  FlexProp 5.9.23       -    102,260
+}
+
+CON
+  _clkfreq = 200_000_000
+
+  MAX_DATA_VALUES = 32
+  DATA_COLLECTION_TIME = 50
+
+''+--------------------------------------------------------------------------+
+'' GUI application constants
+''+--------------------------------------------------------------------------+
+
+''Images
+  #0, BANNER_IMG, HOUSE_IMG, MENU_BTN_IMG, BATTERY_IMG, RED_LED_IMG, ORANGE_LED_IMG, GREEN_LED_IMG, MAX_IMAGES
+
+''Screens
+  #0, MENU_SCR, SCREEN_1, SCREEN_2, SCREEN_3, MAX_SCREENS
+
+''Buttons
+  #0, AUTO_BTN, PLOT_MODE_BTN, BG_COLOR_BTN, SET_ANGLE_BTN, MAX_BUTTONS
+
+''Icon buttons
+  #0, MENU_ICO, GREEN_ICO, ORANGE_ICO, RED_ICO, MAX_ICONS
+
+''Text Displays
+  #0, MENU_0_TXT, MENU_1_TXT, MENU_2_TXT, COUNTER_TXT, TREND_VAL_TXT, MAX_TEXTS
+
+
+OBJ
+''+--------------------------------------------------------------------------+
+'' GUI framework objects
+''+--------------------------------------------------------------------------+
+                                                       '' CODE       VARIABLES
+  neotimer                      : "Neotimer"           '342 bytes    20 bytes
+  color                         : "Colors"             '160 bytes    4 bytes
+  util                          : "Utilities"
+  gui                           : "GUI"                '6204 bytes   732 bytes
+  screen[MAX_SCREENS]           : "Screen"             '400 bytes    92 bytes
+  image[MAX_IMAGES]             : "Image"
+  button[MAX_BUTTONS]           : "Button"             '1040 bytes   68 bytes
+  text[MAX_TEXTS]               : "Text_Display"       '1020 bytes   72 bytes
+  icon[MAX_ICONS]               : "IconButton"
+  gauge                         : "Gauge"              '876 bytes    108 bytes
+  terminal                      : "Multiline_Display"
+  numkey                        : "Numkey"             '1820 bytes   76 bytes
+  trend                         : "Trend_Control"
+  dial                          : "Dial"
+  'widget                        : "Widget_Template"    '796 bytes    76 bytes
+
+
+DAT
+''+--------------------------------------------------------------------------+
+'' GUI images files (see document how to create these images)
+'' Must be RGB 565 in BGR order (R is byte 0)
+''+--------------------------------------------------------------------------+
+'Images
+banner FILE "demo_banner.p2"
+gear_black FILE "gear.p2"
+red_led FILE "red_led.p2"
+orange_led FILE "orange_led.p2"
+green_led FILE "green_led.p2"
+
+
+VAR
+  LONG drawing_method_pointer
+  BYTE current_screen
+  BYTE auto_mode
+  BYTE x
+  WORD BACKGROUND_COLOR
+  BYTE trend_values[MAX_DATA_VALUES]
+  LONG last_time
+  BYTE btn_value[4]
+  LONG cal_low
+  LONG cal_high
+
+PUB main()| inc, sine_val, pot_val
+  current_screen := SCREEN_1
+  BACKGROUND_COLOR := color.white
+  neotimer.init(DATA_COLLECTION_TIME) 'For repeating logic in a non-blocking time interval
+  inc := 1
+
+  adc_setup(8)
+
+  init_gui()                    'Prepare P2GUI framework
+  gui.draw()                    'Draw GUI for the first time
+  last_time := getms()
+
+
+''+--------------------------------------------------------------------+
+''   MAIN APPLICATION LOOP
+''+--------------------------------------------------------------------+
+  repeat
+    'GUI scan (handle touch events and updates)
+    gui.scan()
+
+    'neotimer.set_time(scaled_read(8, 0, 100))
+
+    'Continuous logic (repeats every DATA_COLLECTION_TIME interval)
+    if auto_mode AND neotimer.repeat_execution()
+
+      x := x + inc
+      if x >= 100
+        x := 0
+        debug(udec(getms()-last_time))
+        last_time := getms()
+
+
+      'Sine wave based on the value of x
+      sine_val := Qsin(50,x,50)+ 50
+
+
+      if current_screen == SCREEN_1 AND screen[SCREEN_1].is_enabled() AND NOT(gui.is_screen_saving())
+        'Update trend plot
+        trend.plot_value(sine_val)
+
+        'Update value display
+        text[COUNTER_TXT].set_value(sine_val)
+        text[COUNTER_TXT].set_colors(color.black, util.red_to_green(sine_val,0,100), color.grey)
+        text[COUNTER_TXT].refresh()
+
+        'Update the gauge indicator
+        gauge.set_value_and_fill_ryg(sine_val)
+      else
+        'Keep updating trend data
+        trend.set_data_value(sine_val)
+
+    'Set Dial to value of Pot
+    if current_screen == SCREEN_2 AND screen[SCREEN_2].is_enabled() AND NOT(gui.is_screen_saving())
+      pot_val :=  scaled_read(8, 0, 100)
+      'Update dial indicator
+      if BACKGROUND_COLOR == color.white
+        dial.set_fg_color(color.darken(color.set_color(50,190,255),8))
+      else
+        dial.set_fg_color(util.red_to_green(pot_val,0,100))
+      dial.update(pot_val)
+
+
+PRI adc_setup(pin)
+  pinstart(pin, P_ADC|P_ADC_GIO, %00_1001, 0)
+  pinl(pin)
+  waitct(getct() + (512 << 2))
+  cal_low := rdpin(pin)
+
+  pinstart(pin, P_ADC|P_ADC_VIO, %00_1001, 0)
+  pinl(pin)
+  waitct(getct() + (512 << 2))
+  cal_high := rdpin(pin)
+
+  pinstart(pin, P_ADC|P_ADC_1X, %00_1001, 0)
+  pinl(pin)
+
+PRI scaled_read(pin, user_low, user_high): result | user_range, cal_range
+  user_range := (user_high - user_low)
+  cal_range := (cal_high - cal_low)
+  result := (rdpin(pin) - cal_low) * user_range/cal_range
+  result := user_low #> result + user_low <# user_high
+
+''+--------------------------------------------------------------------+
+''   GUI initialization and configuration
+''+--------------------------------------------------------------------+
+PUB init_gui()
+''Initialization of the GUI object, screens and widgets
+
+  'Set pins for TFT and touchscreen
+  gui.set_TFT_pins(25,23,24,27,26,23,-1,-1)  '(ce, rst, dc, sda, clk, led, v3, gnd)
+  gui.set_TS_pins(26,29,27,28,30)            '(clk, cs, din, do, irq)
+
+  'Initialize the gui element and driver
+  gui.init(BACKGROUND_COLOR, color.white, color.green, gui.PORTRAIT, false) '(bg, fg, ol, o, cal?)
+  gui.set_screen_saving(0) 'Set screen saving time in seconds
+  debug("Initialized GUI")
+
+  numkey.configure(0,60,60,120,160,color.darken(color.white,2), color.black, color.grey)
+  numkey.set_border_width(2)
+  numkey.set_font_size(2)
+  numkey.set_value(0)
+  numkey.set_event_handler(@numkey_event_handler)
+  numkey.set_enable(false)
+  gui.add_widget(@numkey.set_enable, @numkey.draw, @numkey.check_event)
+  debug("Added numkey")
+
+''+--------------------------------------------------------------------+
+'' Menu widgets
+''+--------------------------------------------------------------------+
+  image[BANNER_IMG].set_image(@banner,240,40)
+  image[BANNER_IMG].configure(BANNER_IMG,0,0,BACKGROUND_COLOR,color.black,color.grey)
+  image[BANNER_IMG].enable_events(false)
+  image[BANNER_IMG].set_enable(true)
+  gui.add_widget(@image[BANNER_IMG].set_enable, @image[BANNER_IMG].draw, @image[BANNER_IMG].check_event)
+  debug("Added banner image")
+
+  icon[MENU_ICO].set_image(0,38,38)
+  icon[MENU_ICO].configure(MENU_ICO,0,0,BACKGROUND_COLOR,color.black,color.grey)
+  icon[MENU_ICO].set_values(true,false)
+  icon[MENU_ICO].set_mode(button.TOGGLE_MODE)
+  icon[MENU_ICO].set_event_handler(@menu_event_handler)
+  icon[MENU_ICO].set_enable(true)
+  gui.add_widget(@icon[MENU_ICO].set_enable, @icon[MENU_ICO].draw, @icon[MENU_ICO].check_event)
+  debug("Added MENU icon (transparent)")
+
+  screen[MENU_SCR].configure(MENU_SCR,0,40,155,50,color.darken(color.white, 0),color.black,color.white)
+  screen[MENU_SCR].set_border_width(1)
+  screen[MENU_SCR].set_enable(false)
+  gui.add_widget(@screen[MENU_SCR].set_enable, @screen[MENU_SCR].draw, @screen[MENU_SCR].check_event)
+  debug("Added Menu screen")
+
+  text[MENU_0_TXT].configure(MENU_0_TXT, 5, 45, 145, 30, color.darken(color.white, 0), color.darken(color.set_color(50,190,255),8), color.grey)
+  text[MENU_0_TXT].set_contents(String("Screen 2"))
+  text[MENU_0_TXT].enable_buffering(false)
+  text[MENU_0_TXT].set_align(text.LEFT_ALIGN)
+  text[MENU_0_TXT].set_padding(10)
+  text[MENU_0_TXT].set_compression(6)
+  text[MENU_0_TXT].set_border_width(0)
+  text[MENU_0_TXT].set_invert(false)
+  text[MENU_0_TXT].set_event_handler(@menu_0_event_handler)
+  text[MENU_0_TXT].set_enable(true)
+  screen[MENU_SCR].add_widget(@text[MENU_0_TXT].set_enable, @text[MENU_0_TXT].draw, @text[MENU_0_TXT].check_event)
+  debug("Added menu 0 text")
+
+  terminal.configure(0, 0, 269, 239, 50, color.darken(color.grey,9), color.lighten(color.set_color(50,190,255),8), color.grey)'color.lighten(INVISION_SOLAR_ORANGE), color.grey)
+  terminal.set_contents(String("P2GUI DEMO 2"))
+  terminal.set_align(text.LEFT_ALIGN)
+  terminal.set_border_width(2)
+  terminal.set_font_size(1)
+  terminal.set_invert(true)
+  terminal.set_enable(true)
+  gui.add_widget(@terminal.set_enable, @terminal.draw, @terminal.check_event)
+  debug("Added terminal")
+
+''+--------------------------------------------------------------------+
+'' Screen 1
+''+--------------------------------------------------------------------+
+  screen[SCREEN_1].configure(SCREEN_1,0,40,240,228,BACKGROUND_COLOR, color.black, color.white)
+  screen[SCREEN_1].set_border_width(0)
+  screen[SCREEN_1].set_enable(true)
+  gui.add_widget(@screen[SCREEN_1].set_enable, @screen[SCREEN_1].draw, @screen[SCREEN_1].check_event)
+  debug("Added SCREEN_1")
+
+  button[AUTO_BTN].configure(AUTO_BTN, 46, 45, 105, 40, color.lighten(color.grey,15), color.black, color.grey)
+  button[AUTO_BTN].set_border_width(2)
+  button[AUTO_BTN].set_contents(String("Manual"))
+  button[AUTO_BTN].set_compression(6)
+  button[AUTO_BTN].set_event_handler(@auto_event_handler)
+  button[AUTO_BTN].set_mode(button.TOGGLE_MODE)
+  button[AUTO_BTN].set_enable(true)
+  screen[SCREEN_1].add_widget(@button[AUTO_BTN].set_enable, @button[AUTO_BTN].draw, @button[AUTO_BTN].check_event)
+  debug("Added Auto/Manual button")
+
+  text[COUNTER_TXT].configure(COUNTER_TXT, 200, 45, 35, 40, color.black, color.green, color.grey)
+  text[COUNTER_TXT].set_contents(String("0"))
+  text[COUNTER_TXT].enable_buffering(true)
+  text[COUNTER_TXT].set_align(text.RIGHT_ALIGN)
+  text[COUNTER_TXT].set_padding(4)
+  text[COUNTER_TXT].set_compression(6)
+  text[COUNTER_TXT].set_border_width(1)
+  text[COUNTER_TXT].set_invert(true)
+  text[COUNTER_TXT].set_event_handler(@call_numkey_event)
+  text[COUNTER_TXT].set_enable(true)
+  screen[SCREEN_1].add_widget(@text[COUNTER_TXT].set_enable, @text[COUNTER_TXT].draw, @text[COUNTER_TXT].check_event)
+  debug("Added COUNTER text")
+
+  gauge.configure(0,200,128,35,94,color.black , color.white, color.grey)
+  gauge.set_limits(0, 100, 30, 70)
+  gauge.set_gauge_colors(color.yellow, color.green, color.red)
+  gauge.enable_val(false)
+  gauge.set_enable(true)
+  screen[SCREEN_1].add_widget(@gauge.set_enable, @gauge.draw, @gauge.check_event)
+  debug("Added gauge")
+
+  trend.configure(0,@trend_values, MAX_DATA_VALUES, 5, 90, 190, 170, BACKGROUND_COLOR, color.darken(color.set_color(50,190,255),8), color.grey)' color.black, color.lighten(color.set_color(50,190,255),8), color.grey)
+  trend.set_border_width(2)
+  trend.set_enable(true)
+  screen[SCREEN_1].add_widget(@trend.set_enable, @trend.draw, @trend.check_event)
+  debug("Added trend control" )
+
+''+--------------------------------------------------------------------+
+'' Screen 2
+''+--------------------------------------------------------------------+
+  screen[SCREEN_2].configure(SCREEN_2,0,40,240,228,BACKGROUND_COLOR, color.black, color.white)
+  screen[SCREEN_2].set_border_width(0)
+  screen[SCREEN_2].set_enable(false)
+  gui.add_widget(@screen[SCREEN_2].set_enable, @screen[SCREEN_2].draw, @screen[SCREEN_2].check_event)
+  debug("Added SCREEN_2")
+
+  button[BG_COLOR_BTN].configure(BG_COLOR_BTN, 70, 45, 100, 40, color.lighten(color.grey,15), color.black, color.grey)
+  button[BG_COLOR_BTN].set_border_width(2)
+  button[BG_COLOR_BTN].set_contents(String("Dark"))
+  button[BG_COLOR_BTN].set_compression(6)
+  button[BG_COLOR_BTN].set_event_handler(@bg_event_handler)
+  button[BG_COLOR_BTN].set_mode(button.TOGGLE_MODE)
+  button[BG_COLOR_BTN].set_value(true)
+  button[BG_COLOR_BTN].set_enable(true)
+  screen[SCREEN_2].add_widget(@button[BG_COLOR_BTN].set_enable, @button[BG_COLOR_BTN].draw, @button[BG_COLOR_BTN].check_event)
+  debug("Added Auto/Manual button")
+
+  dial.configure(0,120,160,45, BACKGROUND_COLOR,color.darken(color.set_color(50,190,255),8),color.grey)
+  dial.set_border_width(2)
+  dial.set_enable(true)
+  screen[SCREEN_2].add_widget(@dial.set_enable, @dial.draw, @dial.check_event)
+  debug("Added Dial")
+
+  button[SET_ANGLE_BTN].configure(SET_ANGLE_BTN, 70, 225, 100, 40, color.lighten(color.grey,15), color.black, color.grey)
+  button[SET_ANGLE_BTN].set_border_width(2)
+  button[SET_ANGLE_BTN].set_contents(String("0"))
+  button[SET_ANGLE_BTN].set_compression(6)
+  button[SET_ANGLE_BTN].set_event_handler(@needle_angle_event_handler)
+  button[SET_ANGLE_BTN].set_value(true)
+  button[SET_ANGLE_BTN].set_enable(true)
+  screen[SCREEN_2].add_widget(@button[SET_ANGLE_BTN].set_enable, @button[SET_ANGLE_BTN].draw, @button[SET_ANGLE_BTN].check_event)
+  debug("Added Auto/Manual button")
+
+''+--------------------------------------------------------------------+
+'' Screen 3
+''+--------------------------------------------------------------------+
+  screen[SCREEN_3].configure(SCREEN_3,0,40,240,228,BACKGROUND_COLOR, color.black, color.white)
+  screen[SCREEN_3].set_border_width(0)
+  screen[SCREEN_3].set_enable(false)
+  gui.add_widget(@screen[SCREEN_3].set_enable, @screen[SCREEN_3].draw, @screen[SCREEN_3].check_event)
+  debug("Added SCREEN_3")
+
+  icon[GREEN_ICO].set_image(@green_led,40,40)
+  icon[GREEN_ICO].configure(GREEN_ICO,50,140,color.black,color.black,color.grey)
+  icon[GREEN_ICO].set_mode(button.TOGGLE_MODE)
+  icon[GREEN_ICO].set_event_handler(@green_led_event_handler)
+  icon[GREEN_ICO].set_enable(true)
+  screen[SCREEN_3].add_widget(@icon[GREEN_ICO].set_enable, @icon[GREEN_ICO].draw, @icon[GREEN_ICO].check_event)
+  debug("Added green LED icon")
+
+  icon[ORANGE_ICO].set_image(@orange_led,40,40)
+  icon[ORANGE_ICO].configure(ORANGE_ICO,100,140,color.black,color.black,color.grey)
+  icon[ORANGE_ICO].set_mode(button.TOGGLE_MODE)
+  icon[ORANGE_ICO].set_event_handler(@orange_led_event_handler)
+  icon[ORANGE_ICO].set_enable(true)
+  screen[SCREEN_3].add_widget(@icon[ORANGE_ICO].set_enable, @icon[ORANGE_ICO].draw, @icon[ORANGE_ICO].check_event)
+  debug("Added orange LED icon")
+
+  icon[RED_ICO].set_image(@red_led,40,40)
+  icon[RED_ICO].configure(RED_ICO,150,140,color.black,color.black,color.grey)
+  icon[RED_ICO].set_mode(button.TOGGLE_MODE)
+  icon[RED_ICO].set_event_handler(@red_led_event_handler)
+  icon[RED_ICO].set_enable(true)
+  screen[SCREEN_3].add_widget(@icon[RED_ICO].set_enable, @icon[RED_ICO].draw, @icon[RED_ICO].check_event)
+  debug("Added red LED icon")
+
+
+''+--------------------------------------------------------------------+
+''   WIDGETS EVENT HANDLING METHODS
+''+--------------------------------------------------------------------+
+PUB menu_event_handler(id,val)| startx, starty, size, endx, endy
+''When the menu button is touched, enable or disable the menu screen
+  if screen[MENU_SCR].is_enabled()
+    hide_menu()
+    show_current_screen()
+  else
+    show_menu()
+
+PUB menu_0_event_handler(id)
+  hide_menu()
+
+  if screen[SCREEN_1].is_enabled()
+    'debug("SCREEN_1 enabled")
+    screen[SCREEN_1].set_enable(false)
+    screen[SCREEN_2].set_enable(true)
+    screen[SCREEN_3].set_enable(false)
+    screen[SCREEN_2].draw()
+    text[MENU_0_TXT].set_contents(String("Screen 3"))
+    current_screen := SCREEN_2
+
+  elseif screen[SCREEN_2].is_enabled()
+    'debug("SCREEN_2 enabled")
+    screen[SCREEN_1].set_enable(false)
+    screen[SCREEN_2].set_enable(false)
+    screen[SCREEN_3].set_enable(true)
+    screen[SCREEN_3].draw()
+    text[MENU_0_TXT].set_contents(String("Screen 1"))
+    current_screen := SCREEN_3
+
+  elseif screen[SCREEN_3].is_enabled()
+    'debug("SCREEN_2 enabled")
+    screen[SCREEN_1].set_enable(true)
+    screen[SCREEN_2].set_enable(false)
+    screen[SCREEN_3].set_enable(false)
+    screen[SCREEN_1].draw()
+    text[MENU_0_TXT].set_contents(String("Screen 2"))
+    current_screen := SCREEN_1
+
+PRI hide_menu()
+  screen[MENU_SCR].set_enable(false)
+  icon[MENU_ICO].set_value(false)
+  'screen[current_screen].draw()
+
+PRI show_menu()
+  screen[MENU_SCR].set_enable(true)
+  screen[MENU_SCR].draw()
+
+PRI show_current_screen()
+  if current_screen == SCREEN_1
+    screen[SCREEN_1].draw()
+  elseif current_screen == SCREEN_2
+    screen[SCREEN_2].draw()
+
+PUB auto_event_handler(id,val)
+  auto_mode := val
+
+  if auto_mode
+    button[AUTO_BTN].update_contents(String("Auto"))
+    text[COUNTER_TXT].set_event_handler(0)
+    trend.draw()
+    text[TREND_VAL_TXT].set_contents(@" ")
+    text[TREND_VAL_TXT].draw()
+    terminal.writeln(String("Set to Auto mode"))
+  else
+    button[AUTO_BTN].update_contents(String("Manual"))
+    text[COUNTER_TXT].set_event_handler(@call_numkey_event)
+    terminal.writeln(String("Set to Manual mode"))
+    trend.draw()
+
+PUB call_numkey_event(id)
+  screen[SCREEN_1].set_enable(false)
+
+  'Taking over numkey (setting the response event handler to my event handler)
+  numkey.set_event_handler(@numkey_event_handler)
+  numkey.set_enable(true)
+  numkey.draw()
+
+PUB numkey_event_handler(id,val)
+  if val <> -1
+    val := 0 #> val <# 100
+    x := val
+    numkey.set_enable(false)
+    numkey.set_value(0)
+    screen[SCREEN_1].set_enable(true)
+
+    text[COUNTER_TXT].set_value(val)
+    text[COUNTER_TXT].set_colors(color.black, util.red_to_green(val,0,100), color.grey)
+    gauge.set_value_and_fill_ryg(val)
+
+    screen[SCREEN_1].draw()
+    terminal.write_val(@"Manual value set to " , val)
+    trend.plot_value(val)
+
+  else
+    numkey.set_enable(false)
+    numkey.set_value(0)
+    screen[SCREEN_1].set_enable(true)
+    screen[SCREEN_1].draw()
+
+PUB bg_event_handler(id,val)|s,bg,fg,ol
+  if val
+    BACKGROUND_COLOR := color.white
+    button[BG_COLOR_BTN].set_contents(@"Dark")
+  else
+    BACKGROUND_COLOR := color.black
+    button[BG_COLOR_BTN].set_contents(@"Light")
+
+  repeat s from SCREEN_1 to MAX_SCREENS-1
+    screen[s].set_bg_color(BACKGROUND_COLOR)
+
+  trend.set_bg_color(BACKGROUND_COLOR)
+  dial.set_bg_color(BACKGROUND_COLOR)
+
+  screen[current_screen].draw()
+
+PUB needle_angle_event_handler(id, val)
+  screen[SCREEN_2].set_enable(false)
+  'Taking over numkey (setting the response event handler to my event handler)
+  numkey.set_event_handler(@numkey_needle_event_handler)
+  numkey.set_enable(true)
+  numkey.draw()
+
+PUB numkey_needle_event_handler(id, val)
+'Event handler for the button in screen 2
+  if val <> -1
+    val := 0 #> val <# 359
+
+    'Set button value
+    util.set_value(val, @btn_value)
+    button[SET_ANGLE_BTN].set_contents(@btn_value)
+
+    'draw screen
+    screen[SCREEN_2].set_enable(true)
+    screen[SCREEN_2].draw()
+
+    'Update dial
+    dial.clear_hand()
+    if BACKGROUND_COLOR == color.white
+      dial.set_fg_color(color.darken(color.set_color(50,190,255),8))
+    else
+      dial.set_fg_color(util.red_to_green(val,0,100))
+    dial.update(val)
+
+    'disable and reset numkey
+    numkey.set_enable(false)
+    numkey.set_value(0)
+
+  else
+    numkey.set_enable(false)
+    numkey.set_value(0)
+    screen[SCREEN_2].set_enable(true)
+    screen[SCREEN_2].draw()
+
+PUB green_led_event_handler(id,val)
+  if val
+    pinh(16)
+  else
+    pinl(16)
+  icon[id].draw()
+
+PUB orange_led_event_handler(id,val)
+  if val
+    pinh(17)
+  else
+    pinl(17)
+  icon[id].draw()
+
+PUB red_led_event_handler(id,val)
+  if val
+    pinh(18)
+  else
+    pinl(18)
+  icon[id].draw()

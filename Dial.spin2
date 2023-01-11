@@ -301,10 +301,11 @@ PUB set_value(v)
   util.set_value_ns(value, string_pointer)
 
 PUB update(v)
-  clear_hand()
-  set_value(v)
-  draw_hand(@hand, ol_color)
-  draw_value()
+  if v <> value
+    clear_hand()
+    set_value(v)
+    draw_hand(@hand, ol_color)
+    draw_value()
 
 PUB clear_hand()|x,y
   x,y := util.pol_to_xy(radius - 20,90-needle_angle())
