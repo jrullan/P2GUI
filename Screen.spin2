@@ -1,6 +1,6 @@
 {Screen Object}
 CON
-  MAX_WIDGETS = 8               'Max buttons per window (9 windows total)
+  MAX_WIDGETS = 10               'Max buttons per window (9 windows total)
 
 VAR
 'Attributes

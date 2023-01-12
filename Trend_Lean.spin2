@@ -401,6 +401,15 @@ PUB get_colors(): bg, fg, ol
   fg := fg_color
   ol := ol_color
 
+PUB set_bg_color(bg)
+  bg_color := bg
+
+PUB set_fg_color(fg)
+  fg_color := fg
+
+PUB set_ol_color(ol)
+  ol_color := ol
+
 ''+--------------------------------------------------------------------+
 ''   EVENT HANDLING METHODS
 ''+--------------------------------------------------------------------+

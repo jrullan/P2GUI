@@ -51,7 +51,7 @@ OBJ
   gauge                         : "Gauge"              '876 bytes    108 bytes
   terminal                      : "Multiline_Display"
   numkey                        : "Numkey"             '1820 bytes   76 bytes
-  trend                         : "Trend_Control"
+  trend                         : "Trend_Lean"
   dial                          : "Dial"
   'widget                        : "Widget_Template"    '796 bytes    76 bytes
 
@@ -133,7 +133,7 @@ PUB main()| inc, sine_val, pot_val
         trend.set_data_value(sine_val)
 
     'Set Dial to value of Pot
-    if current_screen == SCREEN_2 AND screen[SCREEN_2].is_enabled() AND NOT(gui.is_screen_saving())
+    if current_screen == SCREEN_1 AND screen[SCREEN_1].is_enabled() AND NOT(gui.is_screen_saving())
       pot_val :=  scaled_read(8, 0, 100)
       'Update dial indicator
       if BACKGROUND_COLOR == color.white
@@ -143,6 +143,9 @@ PUB main()| inc, sine_val, pot_val
       dial.update(pot_val)
 
 
+''+--------------------------------------------------------------------+
+''   Setup Smart Pin for Potentiometer Reading
+''+--------------------------------------------------------------------+
 PRI adc_setup(pin)
   pinstart(pin, P_ADC|P_ADC_GIO, %00_1001, 0)
   pinl(pin)
@@ -162,6 +165,7 @@ PRI scaled_read(pin, user_low, user_high): result | user_range, cal_range
   cal_range := (cal_high - cal_low)
   result := (rdpin(pin) - cal_low) * user_range/cal_range
   result := user_low #> result + user_low <# user_high
+
 
 ''+--------------------------------------------------------------------+
 ''   GUI initialization and configuration
@@ -244,7 +248,7 @@ PUB init_gui()
   gui.add_widget(@screen[SCREEN_1].set_enable, @screen[SCREEN_1].draw, @screen[SCREEN_1].check_event)
   debug("Added SCREEN_1")
 
-  button[AUTO_BTN].configure(AUTO_BTN, 46, 45, 105, 40, color.lighten(color.grey,15), color.black, color.grey)
+  button[AUTO_BTN].configure(AUTO_BTN, 55, 50, 80, 30, color.lighten(color.grey,15), color.black, color.grey)
   button[AUTO_BTN].set_border_width(2)
   button[AUTO_BTN].set_contents(String("Manual"))
   button[AUTO_BTN].set_compression(6)
@@ -267,7 +271,13 @@ PUB init_gui()
   screen[SCREEN_1].add_widget(@text[COUNTER_TXT].set_enable, @text[COUNTER_TXT].draw, @text[COUNTER_TXT].check_event)
   debug("Added COUNTER text")
 
-  gauge.configure(0,200,128,35,94,color.black , color.white, color.grey)
+  trend.configure(0,@trend_values, MAX_DATA_VALUES, 5, 90, 190, 70, BACKGROUND_COLOR, color.darken(color.set_color(50,190,255),8), color.grey)' color.black, color.lighten(color.set_color(50,190,255),8), color.grey)
+  trend.set_border_width(2)
+  trend.set_enable(true)
+  screen[SCREEN_1].add_widget(@trend.set_enable, @trend.draw, @trend.check_event)
+  debug("Added trend control" )
+
+  gauge.configure(0,200,90,35,70,color.black , color.white, color.grey)
   gauge.set_limits(0, 100, 30, 70)
   gauge.set_gauge_colors(color.yellow, color.green, color.red)
   gauge.enable_val(false)
@@ -275,11 +285,55 @@ PUB init_gui()
   screen[SCREEN_1].add_widget(@gauge.set_enable, @gauge.draw, @gauge.check_event)
   debug("Added gauge")
 
-  trend.configure(0,@trend_values, MAX_DATA_VALUES, 5, 90, 190, 170, BACKGROUND_COLOR, color.darken(color.set_color(50,190,255),8), color.grey)' color.black, color.lighten(color.set_color(50,190,255),8), color.grey)
-  trend.set_border_width(2)
-  trend.set_enable(true)
-  screen[SCREEN_1].add_widget(@trend.set_enable, @trend.draw, @trend.check_event)
-  debug("Added trend control" )
+  dial.configure(0,100,215,45, BACKGROUND_COLOR,color.darken(color.set_color(50,190,255),8),color.grey)
+  dial.set_border_width(2)
+  dial.set_enable(true)
+  screen[SCREEN_1].add_widget(@dial.set_enable, @dial.draw, @dial.check_event)
+  debug("Added Dial")
+
+  button[SET_ANGLE_BTN].configure(SET_ANGLE_BTN, 150, 180, 80, 30, color.lighten(color.grey,15), color.black, color.grey)
+  button[SET_ANGLE_BTN].set_border_width(2)
+  button[SET_ANGLE_BTN].set_contents(String("Set Val"))
+  button[SET_ANGLE_BTN].set_compression(6)
+  button[SET_ANGLE_BTN].set_event_handler(@set_value_event_handler)
+  button[SET_ANGLE_BTN].set_enable(true)
+  screen[SCREEN_1].add_widget(@button[SET_ANGLE_BTN].set_enable, @button[SET_ANGLE_BTN].draw, @button[SET_ANGLE_BTN].check_event)
+  debug("Added Auto/Manual button")
+
+  button[BG_COLOR_BTN].configure(BG_COLOR_BTN, 150, 220, 80, 30, color.lighten(color.grey,15), color.black, color.grey)
+  button[BG_COLOR_BTN].set_border_width(2)
+  button[BG_COLOR_BTN].set_contents(String("Dark"))
+  button[BG_COLOR_BTN].set_compression(6)
+  button[BG_COLOR_BTN].set_event_handler(@bg_event_handler)
+  button[BG_COLOR_BTN].set_mode(button.TOGGLE_MODE)
+  button[BG_COLOR_BTN].set_value(true)
+  button[BG_COLOR_BTN].set_enable(true)
+  screen[SCREEN_1].add_widget(@button[BG_COLOR_BTN].set_enable, @button[BG_COLOR_BTN].draw, @button[BG_COLOR_BTN].check_event)
+  debug("Added Auto/Manual button")
+
+  icon[GREEN_ICO].set_image(@green_led,40,40)
+  icon[GREEN_ICO].configure(GREEN_ICO,0,165,color.black,color.black,color.grey)
+  icon[GREEN_ICO].set_mode(button.TOGGLE_MODE)
+  icon[GREEN_ICO].set_event_handler(@green_led_event_handler)
+  icon[GREEN_ICO].set_enable(true)
+  screen[SCREEN_1].add_widget(@icon[GREEN_ICO].set_enable, @icon[GREEN_ICO].draw, @icon[GREEN_ICO].check_event)
+  debug("Added green LED icon")
+
+  icon[ORANGE_ICO].set_image(@orange_led,40,40)
+  icon[ORANGE_ICO].configure(ORANGE_ICO,0,210,color.black,color.black,color.grey)
+  icon[ORANGE_ICO].set_mode(button.TOGGLE_MODE)
+  icon[ORANGE_ICO].set_event_handler(@orange_led_event_handler)
+  icon[ORANGE_ICO].set_enable(true)
+  'screen[SCREEN_1].add_widget(@icon[ORANGE_ICO].set_enable, @icon[ORANGE_ICO].draw, @icon[ORANGE_ICO].check_event)
+  debug("Added orange LED icon")
+
+  icon[RED_ICO].set_image(@red_led,40,40)
+  icon[RED_ICO].configure(RED_ICO,0,210,color.black,color.black,color.grey)
+  icon[RED_ICO].set_mode(button.TOGGLE_MODE)
+  icon[RED_ICO].set_event_handler(@red_led_event_handler)
+  icon[RED_ICO].set_enable(true)
+  screen[SCREEN_1].add_widget(@icon[RED_ICO].set_enable, @icon[RED_ICO].draw, @icon[RED_ICO].check_event)
+  debug("Added red LED icon")
 
 ''+--------------------------------------------------------------------+
 '' Screen 2
@@ -290,32 +344,11 @@ PUB init_gui()
   gui.add_widget(@screen[SCREEN_2].set_enable, @screen[SCREEN_2].draw, @screen[SCREEN_2].check_event)
   debug("Added SCREEN_2")
 
-  button[BG_COLOR_BTN].configure(BG_COLOR_BTN, 70, 45, 100, 40, color.lighten(color.grey,15), color.black, color.grey)
-  button[BG_COLOR_BTN].set_border_width(2)
-  button[BG_COLOR_BTN].set_contents(String("Dark"))
-  button[BG_COLOR_BTN].set_compression(6)
-  button[BG_COLOR_BTN].set_event_handler(@bg_event_handler)
-  button[BG_COLOR_BTN].set_mode(button.TOGGLE_MODE)
-  button[BG_COLOR_BTN].set_value(true)
-  button[BG_COLOR_BTN].set_enable(true)
-  screen[SCREEN_2].add_widget(@button[BG_COLOR_BTN].set_enable, @button[BG_COLOR_BTN].draw, @button[BG_COLOR_BTN].check_event)
-  debug("Added Auto/Manual button")
 
-  dial.configure(0,120,160,45, BACKGROUND_COLOR,color.darken(color.set_color(50,190,255),8),color.grey)
-  dial.set_border_width(2)
-  dial.set_enable(true)
-  screen[SCREEN_2].add_widget(@dial.set_enable, @dial.draw, @dial.check_event)
-  debug("Added Dial")
 
-  button[SET_ANGLE_BTN].configure(SET_ANGLE_BTN, 70, 225, 100, 40, color.lighten(color.grey,15), color.black, color.grey)
-  button[SET_ANGLE_BTN].set_border_width(2)
-  button[SET_ANGLE_BTN].set_contents(String("0"))
-  button[SET_ANGLE_BTN].set_compression(6)
-  button[SET_ANGLE_BTN].set_event_handler(@needle_angle_event_handler)
-  button[SET_ANGLE_BTN].set_value(true)
-  button[SET_ANGLE_BTN].set_enable(true)
-  screen[SCREEN_2].add_widget(@button[SET_ANGLE_BTN].set_enable, @button[SET_ANGLE_BTN].draw, @button[SET_ANGLE_BTN].check_event)
-  debug("Added Auto/Manual button")
+
+
+
 
 ''+--------------------------------------------------------------------+
 '' Screen 3
@@ -326,29 +359,11 @@ PUB init_gui()
   gui.add_widget(@screen[SCREEN_3].set_enable, @screen[SCREEN_3].draw, @screen[SCREEN_3].check_event)
   debug("Added SCREEN_3")
 
-  icon[GREEN_ICO].set_image(@green_led,40,40)
-  icon[GREEN_ICO].configure(GREEN_ICO,50,140,color.black,color.black,color.grey)
-  icon[GREEN_ICO].set_mode(button.TOGGLE_MODE)
-  icon[GREEN_ICO].set_event_handler(@green_led_event_handler)
-  icon[GREEN_ICO].set_enable(true)
-  screen[SCREEN_3].add_widget(@icon[GREEN_ICO].set_enable, @icon[GREEN_ICO].draw, @icon[GREEN_ICO].check_event)
-  debug("Added green LED icon")
 
-  icon[ORANGE_ICO].set_image(@orange_led,40,40)
-  icon[ORANGE_ICO].configure(ORANGE_ICO,100,140,color.black,color.black,color.grey)
-  icon[ORANGE_ICO].set_mode(button.TOGGLE_MODE)
-  icon[ORANGE_ICO].set_event_handler(@orange_led_event_handler)
-  icon[ORANGE_ICO].set_enable(true)
-  screen[SCREEN_3].add_widget(@icon[ORANGE_ICO].set_enable, @icon[ORANGE_ICO].draw, @icon[ORANGE_ICO].check_event)
-  debug("Added orange LED icon")
 
-  icon[RED_ICO].set_image(@red_led,40,40)
-  icon[RED_ICO].configure(RED_ICO,150,140,color.black,color.black,color.grey)
-  icon[RED_ICO].set_mode(button.TOGGLE_MODE)
-  icon[RED_ICO].set_event_handler(@red_led_event_handler)
-  icon[RED_ICO].set_enable(true)
-  screen[SCREEN_3].add_widget(@icon[RED_ICO].set_enable, @icon[RED_ICO].draw, @icon[RED_ICO].check_event)
-  debug("Added red LED icon")
+
+
+
 
 
 ''+--------------------------------------------------------------------+
@@ -469,43 +484,9 @@ PUB bg_event_handler(id,val)|s,bg,fg,ol
 
   screen[current_screen].draw()
 
-PUB needle_angle_event_handler(id, val)
-  screen[SCREEN_2].set_enable(false)
-  'Taking over numkey (setting the response event handler to my event handler)
-  numkey.set_event_handler(@numkey_needle_event_handler)
-  numkey.set_enable(true)
-  numkey.draw()
-
-PUB numkey_needle_event_handler(id, val)
-'Event handler for the button in screen 2
-  if val <> -1
-    val := 0 #> val <# 359
-
-    'Set button value
-    util.set_value(val, @btn_value)
-    button[SET_ANGLE_BTN].set_contents(@btn_value)
-
-    'draw screen
-    screen[SCREEN_2].set_enable(true)
-    screen[SCREEN_2].draw()
-
-    'Update dial
-    dial.clear_hand()
-    if BACKGROUND_COLOR == color.white
-      dial.set_fg_color(color.darken(color.set_color(50,190,255),8))
-    else
-      dial.set_fg_color(util.red_to_green(val,0,100))
-    dial.update(val)
-
-    'disable and reset numkey
-    numkey.set_enable(false)
-    numkey.set_value(0)
-
-  else
-    numkey.set_enable(false)
-    numkey.set_value(0)
-    screen[SCREEN_2].set_enable(true)
-    screen[SCREEN_2].draw()
+PUB set_value_event_handler(id, val)
+  neotimer.set_time(dial.get_value())
+  terminal.write_val(@"Set collection time to ", dial.get_value())
 
 PUB green_led_event_handler(id,val)
   if val

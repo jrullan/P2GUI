@@ -189,8 +189,6 @@ PRI debug_word_image(image)|y
   repeat y from 0 to 15
     debug(ubin_word(WORD[image][y]))
 
-PRI get_point_value_16(x,y,ptr):val | b
-  val := WORD[ptr][y].[x]
 
 
 ''+--------------------------------------------------------------------+
@@ -299,6 +297,9 @@ PUB set_value(v)
   util.set_value_ns(value, prev_pointer)
   value := v
   util.set_value_ns(value, string_pointer)
+
+PUB get_value():val
+  return value
 
 PUB update(v)
   if v <> value
@@ -482,6 +483,11 @@ hand_270
  byte  %01110000,%00001110
  byte  %11110000,%00001111
  byte  %11100000,%00000111
+}
+
+{
+PRI get_point_value_16(x,y,ptr):val | b
+  val := WORD[ptr][y].[x]
 }
 
 {
