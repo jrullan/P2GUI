@@ -53,6 +53,7 @@ OBJ
   numkey                        : "Numkey"             '1820 bytes   76 bytes
   trend                         : "Trend_Lean"
   dial                          : "Dial"
+  lean_button                   : "LeanButton"
   'widget                        : "Widget_Template"    '796 bytes    76 bytes
 
 
@@ -344,7 +345,10 @@ PUB init_gui()
   gui.add_widget(@screen[SCREEN_2].set_enable, @screen[SCREEN_2].draw, @screen[SCREEN_2].check_event)
   debug("Added SCREEN_2")
 
-
+  lean_button.configure(0, 100, 140, 40, 40, BACKGROUND_COLOR, color.black, color.black)
+  lean_button.set_event_handler(@lean_event_handler)
+  lean_button.set_enable(true)
+  screen[SCREEN_2].add_widget(@lean_button.set_enable, @lean_button.draw, @lean_button.check_event)
 
 
 
@@ -508,3 +512,6 @@ PUB red_led_event_handler(id,val)
   else
     pinl(18)
   icon[id].draw()
+
+PUB lean_event_handler(id, val)
+  debug("Lean button pressed")
