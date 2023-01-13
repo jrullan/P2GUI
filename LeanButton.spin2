@@ -5,8 +5,8 @@
   To be used over images or parts of images
 }
 CON
-  _clkfreq = 200_000_000
   DEBOUNCE_TIMER = 500
+  #0, NORMAL_MODE, TOGGLE_MODE
 
 VAR
 'Attributes
@@ -30,6 +30,12 @@ VAR
   byte enabled                  'Boolean flag to indicate widget can be drawn and can check for events
   byte invert_border            'Boolean flag to invert border colors
 
+'Button specific attributes
+  byte mode                     'Mode: 0 = Normal (no debouncing, value = active_value while event is true)
+                                'Mode: 1 = Toggle (debouncing, value toggles on successive events)
+  byte active_value
+  byte inactive_value
+
 
 OBJ
   color : "Colors"
@@ -49,7 +55,7 @@ PUB set_enable(e)
 
 PUB draw()| w, h, x, y, tw, th
 ''This method draws the graphical representation of this widget type
-  if enabled
+  if enabled AND (border_width <> 0)
     'BORDER
     util.draw_border(xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
 
@@ -62,6 +68,10 @@ PUB check_event(coord):is_mine | x, y
 
       if event_handler <> 0
         if (getms()-last_time) >= DEBOUNCE_TIMER          'debounce the event
+
+          if mode == TOGGLE_MODE              'Toggle or Event Mode
+            value := (value==inactive_value)?active_value:inactive_value
+
           event_handler(id)                               'call the event handler and pass along id of button
           last_time := getms()                            'reset debounce timer
 
@@ -77,8 +87,9 @@ PUB configure(i, xt, yt, w, h, bg, fg, ol)
   ybot := h + yt 'yb
 
   ol_color := ol
-  border_width := 1
+  border_width := 0
   invert_border := false
+  active_value := true
 
   configured := true
   last_time := getms()
@@ -113,3 +124,9 @@ PUB call_event_handler(Method)
 ''+--------------------------------------------------------------------+
 PUB set_border_width(bw)
   border_width := bw
+
+PUB set_mode(m)
+  mode := m
+
+PUB set_value(v)
+  value := v

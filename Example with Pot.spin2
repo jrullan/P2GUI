@@ -28,7 +28,7 @@ CON
   #0, AUTO_BTN, PLOT_MODE_BTN, BG_COLOR_BTN, SET_ANGLE_BTN, MAX_BUTTONS
 
 ''Icon buttons
-  #0, MENU_ICO, GREEN_ICO, ORANGE_ICO, RED_ICO, MAX_ICONS
+  #0, GREEN_ICO, ORANGE_ICO, RED_ICO, MAX_ICONS
 
 ''Text Displays
   #0, MENU_0_TXT, MENU_1_TXT, MENU_2_TXT, COUNTER_TXT, TREND_VAL_TXT, MAX_TEXTS
@@ -53,7 +53,7 @@ OBJ
   numkey                        : "Numkey"             '1820 bytes   76 bytes
   trend                         : "Trend_Lean"
   dial                          : "Dial"
-  lean_button                   : "LeanButton"
+  menu_button                   : "LeanButton"         '320 bytes    56 bytes
   'widget                        : "Widget_Template"    '796 bytes    76 bytes
 
 
@@ -64,7 +64,6 @@ DAT
 ''+--------------------------------------------------------------------------+
 'Images
 banner FILE "demo_banner.p2"
-gear_black FILE "gear.p2"
 red_led FILE "red_led.p2"
 orange_led FILE "orange_led.p2"
 green_led FILE "green_led.p2"
@@ -202,13 +201,11 @@ PUB init_gui()
   gui.add_widget(@image[BANNER_IMG].set_enable, @image[BANNER_IMG].draw, @image[BANNER_IMG].check_event)
   debug("Added banner image")
 
-  icon[MENU_ICO].set_image(0,38,38)
-  icon[MENU_ICO].configure(MENU_ICO,0,0,BACKGROUND_COLOR,color.black,color.grey)
-  icon[MENU_ICO].set_values(true,false)
-  icon[MENU_ICO].set_mode(button.TOGGLE_MODE)
-  icon[MENU_ICO].set_event_handler(@menu_event_handler)
-  icon[MENU_ICO].set_enable(true)
-  gui.add_widget(@icon[MENU_ICO].set_enable, @icon[MENU_ICO].draw, @icon[MENU_ICO].check_event)
+  menu_button.configure(0, 0, 0, 38, 38, BACKGROUND_COLOR, color.black, color.black)
+  menu_button.set_mode(menu_button.TOGGLE_MODE)
+  menu_button.set_event_handler(@menu_event_handler)
+  menu_button.set_enable(true)
+  gui.add_widget(@menu_button.set_enable, @menu_button.draw, @menu_button.check_event)
   debug("Added MENU icon (transparent)")
 
   screen[MENU_SCR].configure(MENU_SCR,0,40,155,50,color.darken(color.white, 0),color.black,color.white)
@@ -345,10 +342,6 @@ PUB init_gui()
   gui.add_widget(@screen[SCREEN_2].set_enable, @screen[SCREEN_2].draw, @screen[SCREEN_2].check_event)
   debug("Added SCREEN_2")
 
-  lean_button.configure(0, 100, 140, 40, 40, BACKGROUND_COLOR, color.black, color.black)
-  lean_button.set_event_handler(@lean_event_handler)
-  lean_button.set_enable(true)
-  screen[SCREEN_2].add_widget(@lean_button.set_enable, @lean_button.draw, @lean_button.check_event)
 
 
 
@@ -413,7 +406,7 @@ PUB menu_0_event_handler(id)
 
 PRI hide_menu()
   screen[MENU_SCR].set_enable(false)
-  icon[MENU_ICO].set_value(false)
+  menu_button.set_value(false)
   'screen[current_screen].draw()
 
 PRI show_menu()
@@ -514,4 +507,5 @@ PUB red_led_event_handler(id,val)
   icon[id].draw()
 
 PUB lean_event_handler(id, val)
-  debug("Lean button pressed")
+  terminal.writeln(@"Lean button pressed")
+
