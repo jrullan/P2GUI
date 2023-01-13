@@ -60,42 +60,6 @@ PUB rotate_point(xi,yi,a):x,y
     GETQY y
   END
 
-
-{
-PUB rotate_image_GPT(orig, rotated, angle)|xc, yc, xr, yr, x, y, xa, ya, val
-''Algorithm to rotate 16x16 image (top-left is 0,0)
-  xc := 8
-  yc := 8
-  repeat x from 0 to 15
-    xa := x - xc
-    repeat y from 0 to 15
-      ya := y - yc
-      xr := (QCOS(xa, angle, 360) - QSIN(ya, angle, 360) + xc)
-      yr := (QSIN(xa, angle, 360) + QCOS(ya, angle, 360) + yc)
-      WORD[rotated][yr].[xr] := WORD[orig][y].[x]
-
-
-PUB rotate_image_affine(orig, rotated, angle)|xc, yc, xr, yr, x, y, xa, ya, factor, rot_0[2], rot_1[2]
-''Algorithm to rotate 16x16 image (top-left is 0,0) with "affine matrix"
-  xc := 8
-  yc := 8
-  factor := 1000
-
-  'Affine Matrix for Rotation
-  rot_0[0] := QCOS(factor, angle, 360)
-  rot_0[1] := -QSIN(factor, angle, 360)
-  rot_1[0] := QSIN(factor, angle, 360)
-  rot_1[1] := QCOS(factor, angle, 360)
-
-  repeat x from 0 to 15
-    xa := x - xc
-    repeat y from 0 to 15
-      ya := y - yc
-      xr := rot_0[0]*(xa)/factor + rot_0[1]*(ya)/factor + xc
-      yr := rot_1[0]*(xa)/factor + rot_1[1]*(ya)/factor + yc
-      WORD[rotated][yr].[xr] := WORD[orig][y].[x]
-}
-
 PUB rotate_image_rotxy(orig, rotated, angle)| xr, yr, x, y, xa, ya
 ''Rotate 16x16 image (top-left is 0,0)
   repeat x from 0 to 15
