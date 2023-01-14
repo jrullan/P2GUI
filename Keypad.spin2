@@ -1,0 +1,270 @@
+{
+  Widget Object - Template
+}
+CON
+  DEBOUNCE_TIMER = 500
+  MAX_CHARACTERS = 8
+  K_WIDTH = 240
+  K_HEIGHT = 110
+
+'Text align constants
+  #0, LEFT_ALIGN, CENTER_ALIGN, RIGHT_ALIGN
+
+VAR
+'Attributes
+  long id                       'Unique ID - (window index << 4)|(button index)
+  long bg_color                 'background color
+  long fg_color                 'foreground color
+  long ol_color                 'outline = border
+  word xtop                     'Top Left X (Pixel)
+  word ytop                     'Top Left Y (Pixel)
+  word xbot                     'Bottom Right X (Pixel)
+  word ybot                     'Bottom Right Y (Pixel)
+  byte border_width             'Border width in pixels
+  LONG image_pointer
+
+'Method Pointers
+  long event_handler            'Default event handler method pointer
+
+'Internal state variables
+  long last_time                'Stores touch event debouncer last time value
+  long value                    'Virtual value of the widget
+  byte configured               'Boolean flag to identify configured widgets in the window's list
+  byte enabled                  'Boolean flag to indicate widget can be drawn and can check for events
+  byte invert_border            'Boolean flag to invert border colors
+
+'Characters variables
+  byte contents[MAX_CHARACTERS+1] 'Should be 1 more than the displayed characters to account for the terminating zero
+  long string_pointer           'Hub address of string memory (addresses are LONG but memory access in hub is byte)
+  byte font_size
+  byte padding
+  byte align                    '0 = LEFT, 1 = CENTER, 2 = RIGHT
+  byte compression              'compression factor for the text
+
+
+OBJ
+  color : "Colors"
+  util  : "Utilities"
+  graphics : "Graphics"
+
+DAT
+'Image file for the keypad
+keypad_image FILE "Keypad.p2"
+
+PUB null()
+
+''+--------------------------------------------------------------------+
+''   WIDGET INTERFACE METHODS
+''+--------------------------------------------------------------------+
+PUB set_enable(e)
+  if e
+    enabled := true
+  else
+    enabled := false
+
+PUB draw()| w, h, x, y, tw, th
+''This method draws the graphical representation of this widget type
+  if enabled AND image_pointer <> 0
+
+    util.draw_image(image_pointer, xtop, ytop, K_WIDTH, K_HEIGHT, bg_color)
+
+PUB check_event(coord):is_mine | x, y, k
+  if configured AND enabled
+    x := coord.WORD[0]
+    y := coord.WORD[1]
+    if (x >= xtop AND x <= xbot) AND (y >= ytop AND y <= ybot)
+      is_mine := true
+
+      if event_handler <> 0
+        if (getms()-last_time) >= DEBOUNCE_TIMER          'debounce the event
+          k := get_key_pressed(x,y)
+          event_handler(id, k)                               'call the event handler and pass along id of button
+          last_time := getms()                            'reset debounce timer
+
+          graphics.select_font_size(2)
+          graphics.set_foreground_color(fg_color)
+          graphics.set_background_color(bg_color)
+
+          graphics.set_window(xtop+112, ytop-30, xtop + 112 + 8, ytop-10)
+          graphics.fill_window(bg_color)
+          graphics.draw_char(k)
+
+
+''+--------------------------------------------------------------------+
+''   CONFIGURATION METHODS
+''+--------------------------------------------------------------------+
+PUB configure(i, xt, yt, bg, fg, ol)
+  id := i
+  xtop := xt
+  ytop := yt
+  xbot := K_WIDTH + xt
+  ybot := K_HEIGHT + yt
+  bg_color := bg
+  fg_color := fg
+  ol_color := ol
+  border_width := 1
+  invert_border := false
+  font_size := 2
+  padding := 2
+  align := CENTER_ALIGN
+
+  image_pointer := @keypad_image
+
+  configured := true
+  last_time := getms()
+
+PUB is_configured():conf
+  conf := configured
+
+PUB get_coordinates() : coords
+  coords.BYTE[0] := xtop
+  coords.BYTE[1] := ytop
+  coords.BYTE[2] := xbot
+  coords.BYTE[3] := ybot
+
+PUB set_bg_color(bg)
+  bg_color := bg
+
+PUB set_font_size(s)
+  font_size := 1 #> s <# 2
+
+''+--------------------------------------------------------------------+
+''   EVENT HANDLING METHODS
+''+--------------------------------------------------------------------+
+PUB set_event_handler(Method)
+  event_handler := Method    'Sets the default event handler of this object
+
+PUB call_event_handler(Method)
+  Method(id)                 'Calls a passed event handler
+
+
+''+--------------------------------------------------------------------+
+''   OTHER METHODS
+''+--------------------------------------------------------------------+
+PUB set_border_width(bw)
+  border_width := bw
+
+PUB set_contents(addr)|c,i
+  'Set new contents
+  repeat i from 0 to MAX_CHARACTERS-1                   'Reserve last character place for the terminating 0
+    c := BYTE[addr][i]
+    if c <> 0
+      contents[i] := c
+    else
+      quit
+  contents[i+1] := 0
+  string_pointer := @contents
+
+PRI get_key_pressed(x, y):key | rx, ry
+  'Get coordinates relative to keypad's 0,0
+  rx := (x - xtop)
+  ry := (y - ytop)
+
+  'Numbers row
+  if ry/24 < 1
+    key := $30 + (rx / 24) + 1
+    if key == $3A
+      key := $30
+
+  'Keys rows
+  if ry >= 30
+
+    'Make ry relative to Q
+    ry := (ry - 30)/24
+    rx := rx/24
+
+    'First row
+    if ry < 1
+      if rx == 0
+        key := $51 'Q
+
+      if rx == 1
+        key := $57 'W
+
+      if rx == 2
+        key := $45 'E
+
+      if rx == 3
+        key := $52 'R
+
+      if rx == 4
+        key := $54 'T
+
+      if rx == 5
+        key := $59 'Y
+
+      if rx == 6
+        key := $55 'U
+
+      if rx == 7
+        key := $49 'I
+
+      if rx == 8
+        key := $4F 'O
+
+      if rx == 9
+        key := $50 'P
+
+    'Second row
+    if ry == 1
+      if rx == 0
+        key := $41 'A
+
+      if rx == 1
+        key := $53 'S
+
+      if rx == 2
+        key := $44 'D
+
+      if rx == 3
+        key := $46 'F
+
+      if rx == 4
+        key := $47 'G
+
+      if rx == 5
+        key := $48 'H
+
+      if rx == 6
+        key := $4A 'J
+
+      if rx == 7
+        key := $4B 'K
+
+      if rx == 8
+        key := $4C 'L
+
+      if rx == 9
+        key := $3D 'Equal sign (ENTER)
+
+    'Third row
+    if ry == 2
+      if rx == 0
+        key := $5A 'Z
+
+      if rx == 1
+        key := $58 'X
+
+      if rx == 2
+        key := $43 'C
+
+      if rx == 3
+        key := $56 'V
+
+      if rx == 4
+        key := $42 'B
+
+      if rx == 5
+        key := $4E 'N
+
+      if rx == 6
+        key := $4D 'M
+
+      if rx == 7
+        key := $2E '.
+
+      if rx == 8
+        key := $3C '< (Backspace)
+
+      if rx == 9
+        key := $3D 'Equal sign (ENTER)

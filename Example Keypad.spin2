@@ -1,0 +1,89 @@
+{
+  Propeller2_GUI
+
+  Application Template
+
+  Author: José Rullán
+  Date: January 10, 2023
+}
+
+CON
+  _clkfreq = 200_000_000
+
+''+--------------------------------------------------------------------------+
+'' GUI application constants
+''+--------------------------------------------------------------------------+
+
+''Buttons
+  #0, P_BTN, MAX_BUTTONS
+
+OBJ
+''+--------------------------------------------------------------------------+
+'' GUI framework objects
+''+--------------------------------------------------------------------------+
+                                                       '' CODE       VARIABLES
+  color                         : "Colors"             '160 bytes    4 bytes
+  util                          : "Utilities"
+  graphics                      : "Graphics"
+  gui                           : "GUI"                '6204 bytes   732 bytes
+  keypad                        : "Keypad"
+
+VAR
+  WORD BACKGROUND_COLOR
+
+PUB main()| x, inc
+  BACKGROUND_COLOR := color.lighten(color.grey,15)
+  init_gui()
+  debug("Finished init_gui()")
+  gui.draw()
+  debug("Finished drawing")
+
+  repeat
+
+    'Continous logic here...
+
+    'GUI scan (handle touch events and updates)
+    gui.scan()
+
+''+--------------------------------------------------------------------+
+''   GUI initialization and configuration
+''+--------------------------------------------------------------------+
+PUB init_gui()
+''Initialization of the GUI object, screens and widgets
+  'Set pins for TFT and touchscreen
+  gui.set_TFT_pins(25,23,24,27,26,23,-1,-1)  '(ce, rst, dc, sda, clk, led, v3, gnd)
+  gui.set_TS_pins(26,29,27,28,30)            '(clk, cs, din, do, irq)
+
+  'Initialize the gui element and driver
+  gui.init(BACKGROUND_COLOR, color.white, color.green, gui.PORTRAIT, false) '(bg, fg, ol, o, cal?)
+  gui.set_screen_saving(0) 'Set screen saving time in seconds
+  debug("Initialized GUI")
+
+  'GUI Areas example configuration
+  gui.set_vertical_layout(40,280,0)
+  gui.set_horizontal_layout(240,0,0)
+  gui.set_area_bg(gui.TOP_LEFT, color.yellow)
+  gui.set_area_bg(gui.TOP_CENTER, color.blue)
+  gui.set_area_bg(gui.TOP_RIGHT, color.GREEN)
+  gui.set_area_bg(gui.MIDDLE_LEFT, color.white)
+  gui.set_area_bg(gui.MIDDLE_CENTER, color.darken(color.cyan,8))
+  gui.set_area_bg(gui.MIDDLE_RIGHT, color.white)
+  gui.set_area_bg(gui.BOTTOM_LEFT, color.cyan)
+  gui.set_area_bg(gui.BOTTOM_CENTER, color.blue)
+  gui.set_area_bg(gui.BOTTOM_RIGHT, color.purple)
+
+  keypad.configure(0, 0, 210, color.white, color.blue, color.grey)
+  keypad.set_event_handler(@button_event_handler)
+  keypad.set_enable(true)
+  gui.add_widget(@keypad.set_enable, @keypad.draw, @keypad.check_event)
+
+
+''+--------------------------------------------------------------------+
+''   WIDGETS EVENT HANDLING METHODS
+''+--------------------------------------------------------------------+
+''Button example event handler
+''This method could be use for multiple buttons
+''that can be identified by the id parameter
+''returned by the button.
+PUB button_event_handler(id,val)
+  debug("Key pressed: ", uhex_byte(val))
