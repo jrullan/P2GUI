@@ -44,6 +44,7 @@ OBJ
   util                          : "Utilities"
   gui                           : "GUI"                '6204 bytes   732 bytes
   screen[MAX_SCREENS]           : "Screen"             '400 bytes    92 bytes
+  menu_button                   : "LeanButton"         '320 bytes    56 bytes
   image[MAX_IMAGES]             : "Image"
   button[MAX_BUTTONS]           : "Button"             '1040 bytes   68 bytes
   text[MAX_TEXTS]               : "Text_Display"       '1020 bytes   72 bytes
@@ -53,7 +54,6 @@ OBJ
   numkey                        : "Numkey"             '1820 bytes   76 bytes
   trend                         : "Trend_Lean"
   dial                          : "Dial"
-  menu_button                   : "LeanButton"         '320 bytes    56 bytes
   'widget                        : "Widget_Template"    '796 bytes    76 bytes
 
 
@@ -80,6 +80,9 @@ VAR
   BYTE btn_value[4]
   LONG cal_low
   LONG cal_high
+  BYTE last_pot_val
+  BYTE hi_pot_limit
+  BYTE low_pot_limit
 
 PUB main()| inc, sine_val, pot_val
   current_screen := SCREEN_1
@@ -141,6 +144,27 @@ PUB main()| inc, sine_val, pot_val
       else
         dial.set_fg_color(util.red_to_green(pot_val,0,100))
       dial.update(pot_val)
+
+      if pot_val <> last_pot_val
+        if pot_val < 31 AND (low_pot_limit == false)
+          icon[RED_ICO].set_value(true)
+          red_led_event_handler(RED_ICO,true)
+          low_pot_limit := true
+        elseif pot_val > 29 and (low_pot_limit)
+          icon[RED_ICO].set_value(false)
+          red_led_event_handler(RED_ICO,false)
+          low_pot_limit := false
+
+        if pot_val > 71 AND (hi_pot_limit == false)
+          icon[GREEN_ICO].set_value(true)
+          green_led_event_handler(GREEN_ICO,true)
+          hi_pot_limit := true
+        elseif pot_val < 69 AND (hi_pot_limit)
+          icon[GREEN_ICO].set_value(false)
+          green_led_event_handler(GREEN_ICO,false)
+          hi_pot_limit := false
+      last_pot_val := pot_val
+
 
 
 ''+--------------------------------------------------------------------+
@@ -418,6 +442,8 @@ PRI show_current_screen()
     screen[SCREEN_1].draw()
   elseif current_screen == SCREEN_2
     screen[SCREEN_2].draw()
+  elseif current_screen == SCREEN_3
+    screen[SCREEN_3].draw()
 
 PUB auto_event_handler(id,val)
   auto_mode := val
