@@ -239,6 +239,7 @@ PUB join_strings(string1_ptr, string2_ptr, result_ptr, max)|c1,c2,c,k
       c := c1
       quit
     Byte[result_ptr + c1] := k
+    'debug(uhex_byte(k))
 
   'Second string
   repeat c2 from 0 to (max-c-1)
@@ -247,6 +248,7 @@ PUB join_strings(string1_ptr, string2_ptr, result_ptr, max)|c1,c2,c,k
       c := c + c2
       quit
     Byte[result_ptr + c + c2] := k
+    'debug(uhex_byte(k))
 
   'End character (0)
   Byte[result_ptr + c] := 0
@@ -314,6 +316,10 @@ PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color
   graphics.select_font_size(1 #> font_size <# 2)
   chars := get_characters(buffer)
 
+  'Early exit if no chars in buffer
+  if chars <= 0
+    return
+
   w := font_size * 8
   h := font_size * 8
 
@@ -332,7 +338,7 @@ PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color
       xs := x+(w-compression)*(n)
       xe := xs + w
 
-      if (font_size == 2) AND ((k == ($6C)) OR (k == ($69)) OR (k == ($3A)) OR (k == ($2E))) 'i, l, . , :
+      if (font_size == 2) AND ((k == ($6C)) OR (k == ($69)) OR (k == ($3A)) OR (k == ($2E)) OR (k == ($20))) 'i, l, . , :
         x := x - 2
         if k <> k_old   'when new character differs from previous character in buffer
           graphics.set_window(xs, y, xe, y+h)
@@ -356,6 +362,7 @@ PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color
     'Draw all characters
     repeat n from 0 to chars-1
       k := BYTE[buffer+n]
+
       xs := x+(w-compression)*(n)
       xe := xs + w
 

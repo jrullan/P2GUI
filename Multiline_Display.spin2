@@ -130,6 +130,10 @@ PUB configure(i, xt, yt, w, h, bg, fg, ol)
   align := CENTER_ALIGN
   order := TOP_BOTTOM
 
+  string_pointer := @contents
+
+  clear_display()
+
   configured := true
   last_time := getms()
 
@@ -148,7 +152,7 @@ PUB set_contents(addr)|c,i
     else
       quit
   contents[i+1] := 0
-  string_pointer := @contents
+  'string_pointer := @contents
 
 
 PUB is_configured():conf

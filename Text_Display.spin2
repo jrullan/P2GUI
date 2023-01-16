@@ -131,6 +131,8 @@ PUB configure(i, xt, yt, w, h, bg, fg, ol)
   font_size := 2
   padding := 2
   compression := 5
+
+  string_pointer := @contents
   enable_buffering(true)
   last_time := getms()
 
@@ -210,6 +212,9 @@ PUB clear()| c
 PUB update_contents(s)
   set_contents(s)
   draw()
+
+PUB get_contents():ptr
+  ptr := string_pointer
 
 PUB get_value():value
   value := util.get_value(@contents)

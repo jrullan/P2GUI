@@ -26,6 +26,7 @@ OBJ
   util                          : "Utilities"
   graphics                      : "Graphics"
   gui                           : "GUI"                '6204 bytes   732 bytes
+  terminal                      : "Multiline_Display"
   keypad                        : "Keypad"
 
 VAR
@@ -72,10 +73,22 @@ PUB init_gui()
   gui.set_area_bg(gui.BOTTOM_CENTER, color.blue)
   gui.set_area_bg(gui.BOTTOM_RIGHT, color.purple)
 
+  terminal.configure(0, 0, 40, 239, 140, color.darken(color.grey,9), color.lighten(color.set_color(50,190,255),8), color.grey)'color.lighten(INVISION_SOLAR_ORANGE), color.grey)
+  terminal.set_contents(String("P2GUI Demo"))
+  terminal.set_align(0)
+  terminal.set_border_width(2)
+  terminal.set_font_size(2)
+  terminal.set_invert(true)
+  terminal.set_enable(true)
+  gui.add_widget(@terminal.set_enable, @terminal.draw, @terminal.check_event)
+  debug("Added terminal")
+
   keypad.configure(0, 0, 210, color.white, color.blue, color.grey)
   keypad.set_event_handler(@button_event_handler)
   keypad.set_enable(true)
   gui.add_widget(@keypad.set_enable, @keypad.draw, @keypad.check_event)
+
+
 
 
 ''+--------------------------------------------------------------------+
@@ -85,5 +98,6 @@ PUB init_gui()
 ''This method could be use for multiple buttons
 ''that can be identified by the id parameter
 ''returned by the button.
-PUB button_event_handler(id,val)
-  debug("Key pressed: ", uhex_byte(val))
+PUB button_event_handler(id,ptr)
+  terminal.writeln(ptr)
+  'util.debug_string(ptr)

@@ -3,9 +3,10 @@
 }
 CON
   DEBOUNCE_TIMER = 500
-  MAX_CHARACTERS = 8
+
   K_WIDTH = 240
   K_HEIGHT = 110
+  T_HEIGHT = 30
 
 'Text align constants
   #0, LEFT_ALIGN, CENTER_ALIGN, RIGHT_ALIGN
@@ -22,6 +23,7 @@ VAR
   word ybot                     'Bottom Right Y (Pixel)
   byte border_width             'Border width in pixels
   LONG image_pointer
+  LONG string_pointer
 
 'Method Pointers
   long event_handler            'Default event handler method pointer
@@ -33,19 +35,12 @@ VAR
   byte enabled                  'Boolean flag to indicate widget can be drawn and can check for events
   byte invert_border            'Boolean flag to invert border colors
 
-'Characters variables
-  byte contents[MAX_CHARACTERS+1] 'Should be 1 more than the displayed characters to account for the terminating zero
-  long string_pointer           'Hub address of string memory (addresses are LONG but memory access in hub is byte)
-  byte font_size
-  byte padding
-  byte align                    '0 = LEFT, 1 = CENTER, 2 = RIGHT
-  byte compression              'compression factor for the text
-
 
 OBJ
   color : "Colors"
   util  : "Utilities"
   graphics : "Graphics"
+  textbox : "Text_Display"
 
 DAT
 'Image file for the keypad
@@ -61,14 +56,18 @@ PUB set_enable(e)
     enabled := true
   else
     enabled := false
+  textbox.set_enable(enabled)
 
 PUB draw()| w, h, x, y, tw, th
 ''This method draws the graphical representation of this widget type
   if enabled AND image_pointer <> 0
+    'Textbox
+    textbox.draw()
 
-    util.draw_image(image_pointer, xtop, ytop, K_WIDTH, K_HEIGHT, bg_color)
+    'Keypad image
+    util.draw_image(image_pointer, xtop, ytop+T_HEIGHT, K_WIDTH, K_HEIGHT, bg_color)
 
-PUB check_event(coord):is_mine | x, y, k
+PUB check_event(coord):is_mine | x, y, k, ptr, chrs
   if configured AND enabled
     x := coord.WORD[0]
     y := coord.WORD[1]
@@ -78,16 +77,28 @@ PUB check_event(coord):is_mine | x, y, k
       if event_handler <> 0
         if (getms()-last_time) >= DEBOUNCE_TIMER          'debounce the event
           k := get_key_pressed(x,y)
-          event_handler(id, k)                               'call the event handler and pass along id of button
-          last_time := getms()                            'reset debounce timer
 
-          graphics.select_font_size(2)
-          graphics.set_foreground_color(fg_color)
-          graphics.set_background_color(bg_color)
+          if k <> 0
+            chrs := util.get_characters(string_pointer)
 
-          graphics.set_window(xtop+112, ytop-30, xtop + 112 + 8, ytop-10)
-          graphics.fill_window(bg_color)
-          graphics.draw_char(k)
+            if k == $3C 'Backspace
+              if chrs > 0
+                BYTE[string_pointer + chrs - 1] := 0
+                textbox.draw()
+
+            elseif k == $3D 'Enter
+              event_handler(id, string_pointer)             'call the event handler and pass along ptr to text
+              util.clear_string(string_pointer, 16)
+              textbox.draw()
+
+            else 'Add character
+              ptr := 0  'initialized pointer
+              BYTE[ptr][0] := k
+              BYTE[ptr][1] := 0
+              util.join_strings(string_pointer, ptr, string_pointer, 16)
+              textbox.refresh()
+
+            last_time := getms()                            'reset debounce timer
 
 
 ''+--------------------------------------------------------------------+
@@ -96,19 +107,24 @@ PUB check_event(coord):is_mine | x, y, k
 PUB configure(i, xt, yt, bg, fg, ol)
   id := i
   xtop := xt
-  ytop := yt
-  xbot := K_WIDTH + xt
-  ybot := K_HEIGHT + yt
+  ytop := yt <# (320-K_HEIGHT-T_HEIGHT)
+  xbot := xt + K_WIDTH
+  ybot := yt + K_HEIGHT + T_HEIGHT
   bg_color := bg
   fg_color := fg
   ol_color := ol
-  border_width := 1
-  invert_border := false
-  font_size := 2
-  padding := 2
-  align := CENTER_ALIGN
+
 
   image_pointer := @keypad_image
+
+  textbox.configure(0,xtop,ytop,K_WIDTH,T_HEIGHT,bg,fg,ol)
+  textbox.set_align(textbox.LEFT_ALIGN)
+  textbox.set_compression(6)
+  textbox.set_padding(5)
+  textbox.enable_buffering(false)
+  textbox.set_enable(true)
+  string_pointer := textbox.get_contents()
+  util.clear_string(string_pointer, 16)
 
   configured := true
   last_time := getms()
@@ -125,43 +141,23 @@ PUB get_coordinates() : coords
 PUB set_bg_color(bg)
   bg_color := bg
 
-PUB set_font_size(s)
-  font_size := 1 #> s <# 2
-
 ''+--------------------------------------------------------------------+
 ''   EVENT HANDLING METHODS
 ''+--------------------------------------------------------------------+
 PUB set_event_handler(Method)
   event_handler := Method    'Sets the default event handler of this object
 
-PUB call_event_handler(Method)
-  Method(id)                 'Calls a passed event handler
-
-
-''+--------------------------------------------------------------------+
-''   OTHER METHODS
-''+--------------------------------------------------------------------+
-PUB set_border_width(bw)
-  border_width := bw
-
-PUB set_contents(addr)|c,i
-  'Set new contents
-  repeat i from 0 to MAX_CHARACTERS-1                   'Reserve last character place for the terminating 0
-    c := BYTE[addr][i]
-    if c <> 0
-      contents[i] := c
-    else
-      quit
-  contents[i+1] := 0
-  string_pointer := @contents
 
 PRI get_key_pressed(x, y):key | rx, ry
   'Get coordinates relative to keypad's 0,0
   rx := (x - xtop)
-  ry := (y - ytop)
+  ry := (y - ytop - T_HEIGHT)
+
+  'debug("get_key_pressed ",Udec(rx), udec(ry))
 
   'Numbers row
-  if ry/24 < 1
+  if (y > ytop+T_HEIGHT) AND (ry/24 < 1)
+
     key := $30 + (rx / 24) + 1
     if key == $3A
       key := $30
@@ -261,10 +257,15 @@ PRI get_key_pressed(x, y):key | rx, ry
         key := $4D 'M
 
       if rx == 7
-        key := $2E '.
+        key := $20 'Whitespace
 
       if rx == 8
         key := $3C '< (Backspace)
 
       if rx == 9
         key := $3D 'Equal sign (ENTER)
+
+  'debug("get_key_pressed numbers ", uhex(key))
+
+'PUB debug_contents()
+  'util.debug_string(string_pointer)
