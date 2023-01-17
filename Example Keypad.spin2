@@ -90,8 +90,6 @@ PUB init_gui()
   gui.add_widget(@keypad.set_enable, @keypad.draw, @keypad.check_event)
 
 
-
-
 ''+--------------------------------------------------------------------+
 ''   WIDGETS EVENT HANDLING METHODS
 ''+--------------------------------------------------------------------+
@@ -101,4 +99,3 @@ PUB init_gui()
 ''returned by the button.
 PUB button_event_handler(id,ptr)
   terminal.writeln(ptr)
-  'util.debug_string(ptr)

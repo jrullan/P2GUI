@@ -2,7 +2,7 @@
   Widget Object - Template
 }
 CON
-  DEBOUNCE_TIMER = 500
+  DEBOUNCE_TIMER = 200
 
   K_WIDTH = 240
   K_HEIGHT = 110
