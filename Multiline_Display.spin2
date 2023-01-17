@@ -284,7 +284,7 @@ PUB writeln(addr)|c,i,chars,buffer_size
   else
     move_lines_up(addr)
 
-    util.debug_string(string_pointer)
+    'util.debug_string(string_pointer)
 
   lines++
 
@@ -345,7 +345,7 @@ PRI move_lines_up(addr)|i,j, new_chars, contents_chars
 
     repeat j from i to (MAX_CHARACTERS-1)
       contents[j-i] := contents[j+1]
-      debug(udec(j), udec(i), udec(j-i), udec(j+1), uhex(contents[j-i]), uhex(contents[j+1]))
+      'debug(udec(j), udec(i), udec(j-i), udec(j+1), uhex(contents[j-i]), uhex(contents[j+1]))
       if contents[j+1] == 0
         quit
     contents[j-i+1] := 0
