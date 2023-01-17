@@ -17,6 +17,9 @@ CON
 ''Buttons
   #0, P_BTN, MAX_BUTTONS
 
+DAT
+  banner FILE "demo_banner_simple.p2"
+
 OBJ
 ''+--------------------------------------------------------------------------+
 '' GUI framework objects
@@ -28,6 +31,7 @@ OBJ
   gui                           : "GUI"                '6204 bytes   732 bytes
   terminal                      : "Multiline_Display"
   keypad                        : "Keypad"
+  banner_image                  : "Image"
 
 VAR
   WORD BACKGROUND_COLOR
@@ -72,6 +76,13 @@ PUB init_gui()
   gui.set_area_bg(gui.BOTTOM_LEFT, color.cyan)
   gui.set_area_bg(gui.BOTTOM_CENTER, color.blue)
   gui.set_area_bg(gui.BOTTOM_RIGHT, color.purple)
+
+  banner_image.set_image(@banner,240,40)
+  banner_image.configure(0,0,0,BACKGROUND_COLOR,color.black,color.grey)
+  banner_image.enable_events(false)
+  banner_image.set_enable(true)
+  gui.add_widget(@banner_image.set_enable, @banner_image.draw, @banner_image.check_event)
+  debug("Added banner image")
 
   terminal.configure(0, 0, 40, 239, 140, color.darken(color.grey,9), color.lighten(color.set_color(50,190,255),8), color.grey)'color.lighten(INVISION_SOLAR_ORANGE), color.grey)
   terminal.set_order(1)
