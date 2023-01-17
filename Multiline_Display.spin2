@@ -5,8 +5,8 @@
 }
 CON
   DEBOUNCE_TIMER = 500
-  MAX_CHARACTERS = 180
-  MAX_LINES = 4
+  MAX_CHARACTERS = 270
+  MAX_LINES = 6
   MAX_CHARS_PER_LINE = MAX_CHARACTERS/MAX_LINES
   DARKEN_FACTOR = 6
 
@@ -260,7 +260,7 @@ PUB draw_multi_text(x,y)| chars, n, w, h, k, charn, vertical_increment, newx, ne
       _lines++
 
     else
-      if _lines > 0
+      if (order == TOP_BOTTOM) AND (_lines > 0)
         graphics.set_foreground_color(color.darken(fg_color,DARKEN_FACTOR))
 
       if (font_size == 2) AND ((k == ($6C)) OR (k == ($69)) OR (k == ($3A)) OR (k == ($2E))) 'i, l, . , :
@@ -275,19 +275,16 @@ PUB draw_multi_text(x,y)| chars, n, w, h, k, charn, vertical_increment, newx, ne
       charn++
 
 
-PUB writeln(addr)|c,i
+PUB writeln(addr)|c,i,chars,buffer_size
   util.clear_string(@line_contents, MAX_CHARS_PER_LINE)
 
   if order == TOP_BOTTOM
-    'write in first line
-    repeat i from 0 to max_chars_per_line - 1
-      c := BYTE[addr][i]
-      if c <> 0
-        line_contents[i] := c
-      else
-        quit
-    line_contents[i+1] := 0
-    move_lines_down()
+    move_lines_down(addr)
+
+  else
+    move_lines_up(addr)
+
+    util.debug_string(string_pointer)
 
   lines++
 
@@ -304,18 +301,65 @@ PUB clear_display()
   util.clear_string(@contents, MAX_CHARACTERS)
 
 
-PRI move_lines_down()|i,j,chars
-  'Count chars in line_contents
-  repeat chars from 0 to MAX_CHARS_PER_LINE-1
-    if line_contents[chars] == 0
+PRI move_lines_down(addr)|i,last_pos,new_chars
+  'Count chars in new string
+  repeat new_chars from 0 to MAX_CHARS_PER_LINE-1
+    'if line_contents[new_chars] == 0
+    if BYTE[addr][new_chars] == 0
       quit
+  if new_chars == 0
+    return
+
+  'Calculate last pos in contents to start moving
+  last_pos := (MAX_CHARACTERS-1) - (new_chars) - 1
 
   'Make space at the beginning of contents
   'for line_contents
-  repeat i from MAX_CHARACTERS-1-chars-1 to 0
-    contents[i+chars+1] := contents[i]
+  repeat i from last_pos to 0
+    contents[i+new_chars+1] := contents[i]
 
   'Copy chars in line_contents
-  repeat i from 0 to chars
-    contents[i] := line_contents[i]
-  contents[i] := 10 'Add EOL/New Line/ \n character
+  repeat i from 0 to new_chars-1
+    contents[i] := BYTE[addr][i]
+
+  contents[i+1] := 10 'Add EOL/New Line/ \n character
+
+  'util.debug_string(string_pointer)
+
+PRI move_lines_up(addr)|i,j, new_chars, contents_chars
+  'Count chars in new string
+  repeat new_chars from 0 to MAX_CHARS_PER_LINE-1
+    if Byte[addr][new_chars] == 0
+      quit
+  if new_chars == 0
+    return
+
+  contents_chars := util.get_characters(string_pointer)
+
+  if lines >= MAX_LINES-1
+    lines := MAX_LINES
+
+    repeat i from 0 to MAX_CHARS_PER_LINE-1
+      if contents[i] == 10
+        quit
+
+    repeat j from i to (MAX_CHARACTERS-1)
+      contents[j-i] := contents[j+1]
+      debug(udec(j), udec(i), udec(j-i), udec(j+1), uhex(contents[j-i]), uhex(contents[j+1]))
+      if contents[j+1] == 0
+        quit
+    contents[j-i+1] := 0
+    contents_chars := util.get_characters(string_pointer)
+
+  'Add newline at the end of current contents
+  contents[contents_chars++] := 10
+
+  'Add new characters after newline
+  repeat i from 0 to new_chars-1
+    contents[contents_chars + i] := Byte[addr][i]
+
+  'Add EOL
+  contents[contents_chars + i + 1] := 0
+
+
+

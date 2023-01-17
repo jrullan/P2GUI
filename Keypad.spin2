@@ -95,7 +95,7 @@ PUB check_event(coord):is_mine | x, y, k, ptr, chrs
               ptr := 0  'initialized pointer
               BYTE[ptr][0] := k
               BYTE[ptr][1] := 0
-              util.join_strings(string_pointer, ptr, string_pointer, 16)
+              util.join_strings(string_pointer, ptr, string_pointer, textbox.MAX_CHARACTERS)
               textbox.refresh()
 
             last_time := getms()                            'reset debounce timer

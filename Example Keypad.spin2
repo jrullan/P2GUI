@@ -74,6 +74,7 @@ PUB init_gui()
   gui.set_area_bg(gui.BOTTOM_RIGHT, color.purple)
 
   terminal.configure(0, 0, 40, 239, 140, color.darken(color.grey,9), color.lighten(color.set_color(50,190,255),8), color.grey)'color.lighten(INVISION_SOLAR_ORANGE), color.grey)
+  terminal.set_order(1)
   terminal.set_contents(String("P2GUI Demo"))
   terminal.set_align(0)
   terminal.set_border_width(2)
