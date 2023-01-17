@@ -63,7 +63,7 @@ PUB init_gui()
   'GUI Areas example configuration
   gui.set_vertical_layout(40,280,0)
   gui.set_horizontal_layout(240,0,0)
-  gui.set_area_bg(gui.TOP_LEFT, color.yellow)
+  gui.set_area_bg(gui.TOP_LEFT, color.darken(color.cyan,8))
   gui.set_area_bg(gui.TOP_CENTER, color.blue)
   gui.set_area_bg(gui.TOP_RIGHT, color.GREEN)
   gui.set_area_bg(gui.MIDDLE_LEFT, color.white)
