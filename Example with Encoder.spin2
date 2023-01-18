@@ -43,6 +43,7 @@ OBJ
   color                         : "Colors"             '160 bytes    4 bytes
   util                          : "Utilities"
   knob                          : "jm_quadrature"
+  knob_debouncer                : "Neotimer"
   gui                           : "GUI"                '6204 bytes   732 bytes
   screen[MAX_SCREENS]           : "Screen"             '400 bytes    92 bytes
   menu_button                   : "LeanButton"         '320 bytes    56 bytes
@@ -85,7 +86,7 @@ VAR
   BYTE hi_pot_limit
   BYTE low_pot_limit
 
-PUB main()| inc, sine_val, pot_val
+PUB main()| inc, sine_val, pot_val, z
   current_screen := SCREEN_1
   BACKGROUND_COLOR := color.white
   neotimer.init(DATA_COLLECTION_TIME) 'For repeating logic in a non-blocking time interval
@@ -167,9 +168,11 @@ PUB main()| inc, sine_val, pot_val
           hi_pot_limit := false
       last_pot_val := pot_val
 
-      if knob.button(10) == 1
-        neotimer.set_time(dial.get_value())
-        'set_value_event_handler(0,0)
+
+      'Using a neotimer debouncer since the jm_quadrature object debouncer
+      'behaves differently
+      if knob_debouncer.debounce(knob.button(0))
+        set_value_event_handler(0,0)
 
 
 
@@ -177,7 +180,9 @@ PUB main()| inc, sine_val, pot_val
 ''   Encoder Setup
 ''+--------------------------------------------------------------------+
 PUB setup_encoder()
-  knob.start(5, 6, 7, true, 0, 0, 100)
+  knob.start(5, 6, 7, true, 50, 0, 100)
+  knob_debouncer.init(1000)
+  knob_debouncer.start()
 
 
 ''+--------------------------------------------------------------------+
