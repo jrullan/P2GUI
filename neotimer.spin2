@@ -218,7 +218,8 @@ PUB debounce(signal) : result
   if(done() AND signal)
     start()
     result := true
-  result := false
+  else
+    result := false
 
 
 '=========================================================
