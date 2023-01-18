@@ -167,8 +167,9 @@ PUB main()| inc, sine_val, pot_val
           hi_pot_limit := false
       last_pot_val := pot_val
 
-      if knob.button(100) == 1
-        set_value_event_handler(0,0)
+      if knob.button(10) == 1
+        neotimer.set_time(dial.get_value())
+        'set_value_event_handler(0,0)
 
 
 
