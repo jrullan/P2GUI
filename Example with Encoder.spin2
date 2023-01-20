@@ -502,8 +502,8 @@ PUB bg_event_handler(id,val)|s,bg,fg,ol
   screen[current_screen].draw()
 
 PUB set_value_event_handler(id, val)
-  neotimer.set_time(dial.get_value())
-  terminal.write_val(@"Set collection time to ", dial.get_value())
+  neotimer.set_time(100 - dial.get_value())
+  terminal.write_val(@"Set collection time to ", 100 - dial.get_value())
 
 PUB green_led_event_handler(id,val)
   if val
