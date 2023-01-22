@@ -144,7 +144,8 @@ PUB configure(i, xt, yt, bg, fg, ol)
 
   alt_button.configure(0, (xbot-40), ytop, 40, T_HEIGHT, color.lighten(color.grey,8), color.black, color.grey)
   alt_button.set_mode(alt_button.TOGGLE_MODE)
-  alt_button.set_contents(@"m")
+  alt_button.set_compression(6)
+  alt_button.set_contents(@"alt")
   alt_button.set_event_handler(@mode_button_event_handler)
   alt_button.set_enable(true)
 
