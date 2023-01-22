@@ -34,6 +34,7 @@ VAR
   byte configured               'Boolean flag to identify configured widgets in the window's list
   byte enabled                  'Boolean flag to indicate widget can be drawn and can check for events
   byte invert_border            'Boolean flag to invert border colors
+  byte alt                      'Boolean flag to indicate alternate key selection
 
 
 OBJ
@@ -41,10 +42,13 @@ OBJ
   util  : "Utilities"
   graphics : "Graphics"
   textbox : "Text_Display"
+  alt_button : "Button"
+
+
 
 DAT
 'Image file for the keypad
-keypad_image FILE "Keypad.p2"
+keypad_image FILE "Keypad2.p2"
 
 PUB null()
 
@@ -64,10 +68,13 @@ PUB draw()| w, h, x, y, tw, th
     'Textbox
     textbox.draw()
 
+    'Alt button
+    alt_button.draw()
+
     'Keypad image
     util.draw_image(image_pointer, xtop, ytop+T_HEIGHT, K_WIDTH, K_HEIGHT, bg_color)
 
-PUB check_event(coord):is_mine | x, y, k, ptr, chrs
+PUB check_event(coord):is_mine | x, y
   if configured AND enabled
     x := coord.WORD[0]
     y := coord.WORD[1]
@@ -76,30 +83,38 @@ PUB check_event(coord):is_mine | x, y, k, ptr, chrs
 
       if event_handler <> 0
         if (getms()-last_time) >= DEBOUNCE_TIMER          'debounce the event
-          k := get_key_pressed(x,y)
+          debug(udec(x), udec(y))
+          if (x >= (xbot-40)) AND (y <= (ytop+T_HEIGHT))
+            debug("button pressed")
+            alt_button.check_event(coord)
+          else
+            draw_key(x,y)
 
-          if k <> 0
-            chrs := util.get_characters(string_pointer)
+PRI draw_key(x,y)|k, chrs, ptr
+  k := get_key_pressed(x,y)
+  if k <> 0
+    chrs := util.get_characters(string_pointer)
 
-            if k == $3C 'Backspace
-              if chrs > 0
-                BYTE[string_pointer + chrs - 1] := 0
-                textbox.draw()
+    if k == $81 'Backspace
+      if chrs > 0
+        BYTE[string_pointer + chrs - 1] := 0
+        textbox.draw()
+        alt_button.draw()
 
-            elseif k == $3D 'Enter
-              event_handler(id, string_pointer)             'call the event handler and pass along ptr to text
-              util.clear_string(string_pointer, 16)
-              textbox.draw()
+    elseif k == $80 'Enter
+      event_handler(id, string_pointer)             'call the event handler and pass along ptr to text
+      util.clear_string(string_pointer, 16)
+      textbox.draw()
+      alt_button.draw()
 
-            else 'Add character
-              ptr := 0  'initialized pointer
-              BYTE[ptr][0] := k
-              BYTE[ptr][1] := 0
-              util.join_strings(string_pointer, ptr, string_pointer, textbox.MAX_CHARACTERS)
-              textbox.refresh()
+    else 'Add character
+      ptr := 0  'initialized pointer
+      BYTE[ptr][0] := k
+      BYTE[ptr][1] := 0
+      util.join_strings(string_pointer, ptr, string_pointer, textbox.MAX_CHARACTERS)
+      textbox.refresh()
 
-            last_time := getms()                            'reset debounce timer
-
+    last_time := getms()                            'reset debounce timer
 
 ''+--------------------------------------------------------------------+
 ''   CONFIGURATION METHODS
@@ -126,6 +141,13 @@ PUB configure(i, xt, yt, bg, fg, ol)
   string_pointer := textbox.get_contents()
   util.clear_string(string_pointer, 16)
 
+
+  alt_button.configure(0, (xbot-40), ytop, 40, T_HEIGHT, color.lighten(color.grey,8), color.black, color.grey)
+  alt_button.set_mode(alt_button.TOGGLE_MODE)
+  alt_button.set_contents(@"m")
+  alt_button.set_event_handler(@mode_button_event_handler)
+  alt_button.set_enable(true)
+
   configured := true
   last_time := getms()
 
@@ -147,6 +169,15 @@ PUB set_bg_color(bg)
 PUB set_event_handler(Method)
   event_handler := Method    'Sets the default event handler of this object
 
+PUB mode_button_event_handler(i, val)
+  alt := val
+  if val == 0
+    alt_button.set_colors(color.lighten(color.grey,8), color.black, color.grey)
+    alt_button.set_invert(false)
+  else
+    alt_button.set_colors(color.grey, color.black, color.grey)
+    alt_button.set_invert(true)
+  alt_button.draw()
 
 PRI get_key_pressed(x, y):key | rx, ry
   'Get coordinates relative to keypad's 0,0
@@ -157,10 +188,44 @@ PRI get_key_pressed(x, y):key | rx, ry
 
   'Numbers row
   if (y > ytop+T_HEIGHT) AND (ry/24 < 1)
+    rx := rx/24
+    if rx == 0
+      key := (alt == 0) ? $31 : $21 '1 or !
 
+    if rx == 1
+      key := (alt == 0) ? $32 : $40 '2 or @
+
+    if rx == 2
+      key := (alt == 0) ? $33 : $23 '3 or #
+
+    if rx == 3
+      key := (alt == 0) ? $34 : $24 '4 or $
+
+    if rx == 4
+      key := (alt == 0) ? $35 : $25 '5 or %
+
+    if rx == 5
+      key := (alt == 0) ? $36 : $5E '6 or ^
+
+    if rx == 6
+      key := (alt == 0) ? $37 : $26 '7 or &
+
+    if rx == 7
+      key := (alt == 0) ? $38 : $2A '8 or *
+
+    if rx == 8
+      key := (alt == 0) ? $39 : $28 '9 or (
+
+    if rx == 9
+      key := (alt == 0) ? $30 : $29 '0 or )
+
+
+{
     key := $30 + (rx / 24) + 1
     if key == $3A
       key := $30
+}
+
 
   'Keys rows
   if ry >= 30
@@ -172,34 +237,34 @@ PRI get_key_pressed(x, y):key | rx, ry
     'First row
     if ry < 1
       if rx == 0
-        key := $51 'Q
+        key := (alt == 0) ? $51 : $3F 'Q or ?
 
       if rx == 1
-        key := $57 'W
+        key := (alt == 0) ? $57 : $2B 'W or +
 
       if rx == 2
-        key := $45 'E
+        key := (alt == 0) ? $45 : $2D 'E or -
 
       if rx == 3
-        key := $52 'R
+        key := (alt == 0) ? $52 : $5F 'R or _
 
       if rx == 4
-        key := $54 'T
+        key := (alt == 0) ? $54 : $5C 'T or \
 
       if rx == 5
-        key := $59 'Y
+        key := (alt == 0) ? $59 : $2F 'Y or /
 
       if rx == 6
-        key := $55 'U
+        key := (alt == 0) ? $55 : $7B 'U or {
 
       if rx == 7
-        key := $49 'I
+        key := (alt == 0) ? $49 : $7D 'I or }
 
       if rx == 8
-        key := $4F 'O
+        key := (alt == 0) ? $4F : $5B 'O or [
 
       if rx == 9
-        key := $50 'P
+        key := (alt == 0) ? $50 : $5D 'P or ]
 
     'Second row
     if ry == 1
@@ -231,39 +296,39 @@ PRI get_key_pressed(x, y):key | rx, ry
         key := $4C 'L
 
       if rx == 9
-        key := $3D 'Equal sign (ENTER)
+        key := $80 'Equal sign (ENTER)
 
     'Third row
     if ry == 2
       if rx == 0
-        key := $5A 'Z
+        key := (alt == 0) ? $5A : $7C 'Z or |
 
       if rx == 1
-        key := $58 'X
+        key := (alt == 0) ? $58 : $3C 'X or <
 
       if rx == 2
-        key := $43 'C
+        key := (alt == 0) ? $43 : $3D 'C or =
 
       if rx == 3
-        key := $56 'V
+        key := (alt == 0) ? $56 : $3E 'V or >
 
       if rx == 4
-        key := $42 'B
+        key := (alt == 0) ? $42 : $3A 'B or :
 
       if rx == 5
-        key := $4E 'N
+        key := (alt == 0) ? $4E : $3B 'N or ;
 
       if rx == 6
-        key := $4D 'M
+        key := (alt == 0) ? $4D : $2E 'M or .
 
       if rx == 7
-        key := $20 'Whitespace
+        key := (alt == 0) ? $20 : $2C 'Whitespace or ,
 
       if rx == 8
-        key := $3C '< (Backspace)
+        key := $81 '< (Backspace)
 
       if rx == 9
-        key := $3D 'Equal sign (ENTER)
+        key := $80 'Equal sign (ENTER)
 
   'debug("get_key_pressed numbers ", uhex(key))
 
