@@ -56,6 +56,7 @@ OBJ
   numkey                        : "Numkey"             '1820 bytes   76 bytes
   trend                         : "Trend_Lean"
   dial                          : "Dial"
+  keypad                        : "Keypad"
   'widget                        : "Widget_Template"    '796 bytes    76 bytes
 
 
@@ -360,7 +361,10 @@ PUB init_gui()
   gui.add_widget(@screen[SCREEN_2].set_enable, @screen[SCREEN_2].draw, @screen[SCREEN_2].check_event)
   debug("Added SCREEN_2")
 
-
+  keypad.configure(0, 0, 130, color.white, color.blue, color.grey)
+  keypad.set_event_handler(@keypad_event_handler)
+  keypad.set_enable(true)
+  screen[SCREEN_2].add_widget(@keypad.set_enable, @keypad.draw, @keypad.check_event)
 
 
 
@@ -528,3 +532,6 @@ PUB red_led_event_handler(id,val)
 
 PUB lean_event_handler(id, val)
   terminal.writeln(@"Lean button pressed")
+
+PUB keypad_event_handler(id,ptr)
+  terminal.writeln(ptr)
