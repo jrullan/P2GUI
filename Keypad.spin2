@@ -99,13 +99,11 @@ PRI draw_key(x,y)|k, chrs, ptr
       if chrs > 0
         BYTE[string_pointer + chrs - 1] := 0
         textbox.draw()
-        alt_button.draw()
 
     elseif k == $80 'Enter
       event_handler(id, string_pointer)             'call the event handler and pass along ptr to text
       util.clear_string(string_pointer, 16)
       textbox.draw()
-      alt_button.draw()
 
     else 'Add character
       ptr := 0  'initialized pointer
@@ -132,7 +130,7 @@ PUB configure(i, xt, yt, bg, fg, ol)
 
   image_pointer := @keypad_image
 
-  textbox.configure(0,xtop,ytop,K_WIDTH,T_HEIGHT,bg,fg,ol)
+  textbox.configure(0,xtop,ytop,K_WIDTH-40,T_HEIGHT,bg,fg,ol)
   textbox.set_align(textbox.LEFT_ALIGN)
   textbox.set_compression(6)
   textbox.set_padding(5)
@@ -144,7 +142,8 @@ PUB configure(i, xt, yt, bg, fg, ol)
 
   alt_button.configure(0, (xbot-40), ytop, 40, T_HEIGHT, color.lighten(color.grey,8), color.black, color.grey)
   alt_button.set_mode(alt_button.TOGGLE_MODE)
-  alt_button.set_compression(6)
+  alt_button.set_font_size(1)
+  alt_button.set_compression(0)
   alt_button.set_contents(@"alt")
   alt_button.set_event_handler(@mode_button_event_handler)
   alt_button.set_enable(true)
@@ -219,13 +218,6 @@ PRI get_key_pressed(x, y):key | rx, ry
 
     if rx == 9
       key := (alt == 0) ? $30 : $29 '0 or )
-
-
-{
-    key := $30 + (rx / 24) + 1
-    if key == $3A
-      key := $30
-}
 
 
   'Keys rows
@@ -330,8 +322,3 @@ PRI get_key_pressed(x, y):key | rx, ry
 
       if rx == 9
         key := $80 'Equal sign (ENTER)
-
-  'debug("get_key_pressed numbers ", uhex(key))
-
-'PUB debug_contents()
-  'util.debug_string(string_pointer)
