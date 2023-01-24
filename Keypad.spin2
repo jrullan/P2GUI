@@ -65,14 +65,23 @@ PUB set_enable(e)
 PUB draw()| w, h, x, y, tw, th
 ''This method draws the graphical representation of this widget type
   if enabled AND image_pointer <> 0
+    
     'Textbox
     textbox.draw()
 
     'Alt button
     alt_button.draw()
 
+    'Keypad Fill
+    x := xtop
+    y := ytop + T_HEIGHT
+    graphics.set_window(x, y, x + K_WIDTH, y + K_HEIGHT)
+    graphics.fill_window(bg_color)
+
     'Keypad image
-    util.draw_image(image_pointer, xtop, ytop+T_HEIGHT, K_WIDTH, K_HEIGHT, bg_color)
+    util.draw_image(image_pointer, xtop, ytop+T_HEIGHT, K_WIDTH, K_HEIGHT, color.white)
+    
+    
 
 PUB check_event(coord):is_mine | x, y
   if configured AND enabled
@@ -83,9 +92,9 @@ PUB check_event(coord):is_mine | x, y
 
       if event_handler <> 0
         if (getms()-last_time) >= DEBOUNCE_TIMER          'debounce the event
-          debug(udec(x), udec(y))
+          'debug(udec(x), udec(y))
           if (x >= (xbot-40)) AND (y <= (ytop+T_HEIGHT))
-            debug("button pressed")
+            'debug("button pressed")
             alt_button.check_event(coord)
           else
             draw_key(x,y)

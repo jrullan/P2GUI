@@ -361,22 +361,22 @@ PUB init_gui()
   gui.add_widget(@screen[SCREEN_2].set_enable, @screen[SCREEN_2].draw, @screen[SCREEN_2].check_event)
   debug("Added SCREEN_2")
 
-  keypad.configure(0, 0, 130, color.white, color.blue, color.grey)
+  keypad.configure(0, 0, 130, color.darken(color.white,0), color.blue, color.grey)
   keypad.set_event_handler(@keypad_event_handler)
   keypad.set_enable(true)
   screen[SCREEN_2].add_widget(@keypad.set_enable, @keypad.draw, @keypad.check_event)
-
-
+  debug("Added KEYPAD")
+  
 
 
 ''+--------------------------------------------------------------------+
 '' Screen 3
 ''+--------------------------------------------------------------------+
-  screen[SCREEN_3].configure(SCREEN_3,0,40,240,228,BACKGROUND_COLOR, color.black, color.white)
-  screen[SCREEN_3].set_border_width(0)
-  screen[SCREEN_3].set_enable(false)
-  gui.add_widget(@screen[SCREEN_3].set_enable, @screen[SCREEN_3].draw, @screen[SCREEN_3].check_event)
-  debug("Added SCREEN_3")
+  'screen[SCREEN_3].configure(SCREEN_3,0,40,240,228,BACKGROUND_COLOR, color.black, color.white)
+  'screen[SCREEN_3].set_border_width(0)
+  'screen[SCREEN_3].set_enable(false)
+  'gui.add_widget(@screen[SCREEN_3].set_enable, @screen[SCREEN_3].draw, @screen[SCREEN_3].check_event)
+  'debug("Added SCREEN_3")
 
 
 
@@ -400,31 +400,46 @@ PUB menu_0_event_handler(id)
   hide_menu()
 
   if screen[SCREEN_1].is_enabled()
-    'debug("SCREEN_1 enabled")
+    'Select screen to show
     screen[SCREEN_1].set_enable(false)
     screen[SCREEN_2].set_enable(true)
     screen[SCREEN_3].set_enable(false)
+    
+    'Show screen
     screen[SCREEN_2].draw()
-    text[MENU_0_TXT].set_contents(String("Screen 3"))
     current_screen := SCREEN_2
+    
+    'Select text for menu
+    text[MENU_0_TXT].set_contents(String("Screen 1"))
 
   elseif screen[SCREEN_2].is_enabled()
-    'debug("SCREEN_2 enabled")
-    screen[SCREEN_1].set_enable(false)
-    screen[SCREEN_2].set_enable(false)
-    screen[SCREEN_3].set_enable(true)
-    screen[SCREEN_3].draw()
-    text[MENU_0_TXT].set_contents(String("Screen 1"))
-    current_screen := SCREEN_3
-
-  elseif screen[SCREEN_3].is_enabled()
-    'debug("SCREEN_2 enabled")
+    'Select screen to show
     screen[SCREEN_1].set_enable(true)
     screen[SCREEN_2].set_enable(false)
     screen[SCREEN_3].set_enable(false)
+
+    'Show screen
     screen[SCREEN_1].draw()
-    text[MENU_0_TXT].set_contents(String("Screen 2"))
     current_screen := SCREEN_1
+
+    'Select text for menu
+    text[MENU_0_TXT].set_contents(String("Screen 2"))
+    
+{
+  elseif screen[SCREEN_3].is_enabled()
+    'Select screen to show
+    screen[SCREEN_1].set_enable(true)
+    screen[SCREEN_2].set_enable(false)
+    screen[SCREEN_3].set_enable(false)
+
+    'Show screen
+    screen[SCREEN_1].draw()
+    current_screen := SCREEN_1
+
+    'Select text for menu
+    text[MENU_0_TXT].set_contents(String("Screen 2"))
+}
+
 
 PRI hide_menu()
   screen[MENU_SCR].set_enable(false)
