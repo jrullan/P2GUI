@@ -339,12 +339,13 @@ PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color
       xe := xs + w
 
       if (font_size == 2) AND ((k == ($6C)) OR (k == ($69)) OR (k == ($3A)) OR (k == ($3B)) OR (k == ($2C)) OR (k == ($2E)) ) 'i, l, . , :
-        x := x - 2
+        xs := xs - 2
+        xe := xe - 2
         if k <> k_old   'when new character differs from previous character in buffer
           graphics.set_window(xs, y, xe, y+h)
           graphics.draw_char(k)
           Byte[previous_buffer+n] := k
-        x := x - 2
+        x := x - 4
 
       else
         if k <> k_old   'when new character differs from previous character in buffer
@@ -367,10 +368,11 @@ PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color
       xe := xs + w
 
       if (font_size == 2) AND ((k == ($6C)) OR (k == ($69)) OR (k == ($3A)) OR (k == ($3B)) OR (k == ($2C)) OR (k == ($2E)) ) 'i, l, . , :
-        x := x - 2
+        xs := xs - 2
+        xe := xe - 2
         graphics.set_window(xs, y, xe, y+h)
         graphics.draw_char(k)
-        x := x - 2
+        x := x - 4
       else
         graphics.set_window(xs, y, xe, y+h)
         graphics.draw_char(k)
