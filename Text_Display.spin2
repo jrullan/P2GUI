@@ -1,5 +1,8 @@
 {
   Text Display Widget
+
+  This object represents a text widget on screen.
+  
 }
 CON
   MAX_CHARACTERS = 16
@@ -199,15 +202,6 @@ PUB set_contents(addr)|c,i
       quit
   contents[i+1] := 0
   string_pointer := @contents
-
-{
-PUB clear()| c
-  contents[0] := 0
-  'FILL
-  LONG[drawing_method_pointer][FILL_RECTANGLE](xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
-  'contents := String("                ")
-  'draw()
-}
 
 PUB update_contents(s)
   set_contents(s)
