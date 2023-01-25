@@ -4,7 +4,7 @@
   A simple application that demonstrates all the widgets.
   Memory usage is
                             Code/Data                  Variables
-  PropellerTool 2.7.0   -    55,712                     4,548
+  PropellerTool 2.7.0   -    105,876                     4,548
   FlexProp 5.9.23       -    144,012
 }
 CON

@@ -1,6 +1,10 @@
 {
-  Widget Object - Template
+  Keypad
+
+  Input widget to enter characters, numbers and special symbols
+
 }
+''-----------------------------------------------------------------------------------
 CON
   DEBOUNCE_TIMER = 200
 
@@ -10,7 +14,10 @@ CON
 
 'Text align constants
   #0, LEFT_ALIGN, CENTER_ALIGN, RIGHT_ALIGN
+''-----------------------------------------------------------------------------------
 
+
+''-----------------------------------------------------------------------------------
 VAR
 'Attributes
   long id                       'Unique ID - (window index << 4)|(button index)
@@ -35,20 +42,26 @@ VAR
   byte enabled                  'Boolean flag to indicate widget can be drawn and can check for events
   byte invert_border            'Boolean flag to invert border colors
   byte alt                      'Boolean flag to indicate alternate key selection
+  byte lowercaps                'Indicates that lower caps is set
+''-----------------------------------------------------------------------------------
 
 
+''-----------------------------------------------------------------------------------
 OBJ
   color : "Colors"
   util  : "Utilities"
   graphics : "Graphics"
   textbox : "Text_Display"
   alt_button : "Button"
+  lower_button : "Button"
+''-----------------------------------------------------------------------------------
 
 
-
+''-----------------------------------------------------------------------------------
 DAT
 'Image file for the keypad
 keypad_image FILE "Keypad2.p2"
+''-----------------------------------------------------------------------------------
 
 PUB null()
 
@@ -69,8 +82,12 @@ PUB draw()| w, h, x, y, tw, th
     'Textbox
     textbox.draw()
 
+    'Caps button
+    lower_button.draw()
+    
     'Alt button
     alt_button.draw()
+
 
     'Keypad Fill
     x := xtop
@@ -92,10 +109,13 @@ PUB check_event(coord):is_mine | x, y
 
       if event_handler <> 0
         if (getms()-last_time) >= DEBOUNCE_TIMER          'debounce the event
-          'debug(udec(x), udec(y))
+          
+          'Alt button
           if (x >= (xbot-40)) AND (y <= (ytop+T_HEIGHT))
             'debug("button pressed")
             alt_button.check_event(coord)
+          elseif (x >= (xbot-80)) AND (y <= (ytop+T_HEIGHT))
+            lower_button.check_event(coord)
           else
             draw_key(x,y)
 
@@ -139,7 +159,7 @@ PUB configure(i, xt, yt, bg, fg, ol)
 
   image_pointer := @keypad_image
 
-  textbox.configure(0,xtop,ytop,K_WIDTH-40,T_HEIGHT,bg,fg,ol)
+  textbox.configure(0,xtop,ytop,K_WIDTH-80,T_HEIGHT,bg,fg,ol)
   textbox.set_align(textbox.LEFT_ALIGN)
   textbox.set_compression(6)
   textbox.set_padding(5)
@@ -156,6 +176,16 @@ PUB configure(i, xt, yt, bg, fg, ol)
   alt_button.set_contents(@"alt")
   alt_button.set_event_handler(@mode_button_event_handler)
   alt_button.set_enable(true)
+
+  lower_button.configure(0, (xbot-80), ytop, 40, T_HEIGHT, color.lighten(color.grey,8), color.black, color.grey)
+  lower_button.set_mode(lower_button.TOGGLE_MODE)
+  lower_button.set_font_size(1)
+  lower_button.set_compression(0)
+  lower_button.set_contents(@"caps")
+  lower_button.set_event_handler(@caps_button_event_handler)
+  lower_button.set_enable(true)
+
+  lowercaps := 1
 
   configured := true
   last_time := getms()
@@ -177,6 +207,16 @@ PUB set_bg_color(bg)
 ''+--------------------------------------------------------------------+
 PUB set_event_handler(Method)
   event_handler := Method    'Sets the default event handler of this object
+
+PUB caps_button_event_handler(i, val)
+  lowercaps := (val) ? 0 : 1
+  if lowercaps == 1
+    lower_button.set_colors(color.lighten(color.grey,8), color.black, color.grey)
+    lower_button.set_invert(false)
+  else
+    lower_button.set_colors(color.grey, color.black, color.grey)
+    lower_button.set_invert(true)
+  lower_button.draw()
 
 PUB mode_button_event_handler(i, val)
   alt := val
@@ -239,63 +279,63 @@ PRI get_key_pressed(x, y):key | rx, ry
     'First row
     if ry < 1
       if rx == 0
-        key := (alt == 0) ? $51 : $3F 'Q or ?
+        key := (alt == 0) ? $51+$20*lowercaps : $3F 'Q or ?
 
       if rx == 1
-        key := (alt == 0) ? $57 : $2B 'W or +
+        key := (alt == 0) ? $57+$20*lowercaps : $2B 'W or +
 
       if rx == 2
-        key := (alt == 0) ? $45 : $2D 'E or -
+        key := (alt == 0) ? $45+$20*lowercaps : $2D 'E or -
 
       if rx == 3
-        key := (alt == 0) ? $52 : $5F 'R or _
+        key := (alt == 0) ? $52+$20*lowercaps : $5F 'R or _
 
       if rx == 4
-        key := (alt == 0) ? $54 : $5C 'T or \
+        key := (alt == 0) ? $54+$20*lowercaps : $5C 'T or \
 
       if rx == 5
-        key := (alt == 0) ? $59 : $2F 'Y or /
+        key := (alt == 0) ? $59+$20*lowercaps : $2F 'Y or /
 
       if rx == 6
-        key := (alt == 0) ? $55 : $7B 'U or {
+        key := (alt == 0) ? $55+$20*lowercaps : $7B 'U or {
 
       if rx == 7
-        key := (alt == 0) ? $49 : $7D 'I or }
+        key := (alt == 0) ? $49+$20*lowercaps : $7D 'I or }
 
       if rx == 8
-        key := (alt == 0) ? $4F : $5B 'O or [
+        key := (alt == 0) ? $4F+$20*lowercaps : $5B 'O or [
 
       if rx == 9
-        key := (alt == 0) ? $50 : $5D 'P or ]
+        key := (alt == 0) ? $50+$20*lowercaps : $5D 'P or ]
 
     'Second row
     if ry == 1
       if rx == 0
-        key := $41 'A
+        key := $41+$20*lowercaps 'A
 
       if rx == 1
-        key := $53 'S
+        key := $53+$20*lowercaps 'S
 
       if rx == 2
-        key := $44 'D
+        key := $44+$20*lowercaps 'D
 
       if rx == 3
-        key := $46 'F
+        key := $46+$20*lowercaps 'F
 
       if rx == 4
-        key := $47 'G
+        key := $47+$20*lowercaps 'G
 
       if rx == 5
-        key := $48 'H
+        key := $48+$20*lowercaps 'H
 
       if rx == 6
-        key := $4A 'J
+        key := $4A+$20*lowercaps 'J
 
       if rx == 7
-        key := $4B 'K
+        key := $4B+$20*lowercaps 'K
 
       if rx == 8
-        key := $4C 'L
+        key := $4C+$20*lowercaps 'L
 
       if rx == 9
         key := $80 'Equal sign (ENTER)
@@ -303,25 +343,25 @@ PRI get_key_pressed(x, y):key | rx, ry
     'Third row
     if ry == 2
       if rx == 0
-        key := (alt == 0) ? $5A : $7C 'Z or |
+        key := (alt == 0) ? $5A+$20*lowercaps : $7C 'Z or |
 
       if rx == 1
-        key := (alt == 0) ? $58 : $3C 'X or <
+        key := (alt == 0) ? $58+$20*lowercaps : $3C 'X or <
 
       if rx == 2
-        key := (alt == 0) ? $43 : $3D 'C or =
+        key := (alt == 0) ? $43+$20*lowercaps : $3D 'C or =
 
       if rx == 3
-        key := (alt == 0) ? $56 : $3E 'V or >
+        key := (alt == 0) ? $56+$20*lowercaps : $3E 'V or >
 
       if rx == 4
-        key := (alt == 0) ? $42 : $3A 'B or :
+        key := (alt == 0) ? $42+$20*lowercaps : $3A 'B or :
 
       if rx == 5
-        key := (alt == 0) ? $4E : $3B 'N or ;
+        key := (alt == 0) ? $4E+$20*lowercaps : $3B 'N or ;
 
       if rx == 6
-        key := (alt == 0) ? $4D : $2E 'M or .
+        key := (alt == 0) ? $4D+$20*lowercaps : $2E 'M or .
 
       if rx == 7
         key := (alt == 0) ? $20 : $2C 'Whitespace or ,
