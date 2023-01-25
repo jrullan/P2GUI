@@ -1,0 +1,125 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "compileP2",
+            "type": "shell",
+            "osx": {
+              "command": "/Applications/flexprop/bin/flexspin.mac"
+            },
+            "windows": {
+              "command": "flexspin.exe"
+            },
+            "linux": {
+              "command": "/opt/flexprop/bin/flexspin"
+            },
+            "args": ["-2", "-Wabs-paths", "-Wmax-errors=99", "${fileBasename}"],
+            "problemMatcher": {
+              "owner": "Spin2",
+              "fileLocation": ["autoDetect", "${workspaceFolder}"],
+              "pattern": {
+                "regexp": "^(.*):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                "file": 1,
+                "line": 2,
+                "severity": 3,
+                "message": 4
+              }
+            },
+            "presentation": {
+              "panel": "shared",
+              "focus": true
+            },
+            "group": {
+              "kind": "build",
+              "isDefault": true
+            }
+          },
+          {
+            "label": "compileTopP2",
+            "type": "shell",
+            "osx": {
+              "command": "/Applications/flexprop/bin/flexspin.mac"
+            },
+            "windows": {
+              "command": "flexspin.exe"
+            },
+            "linux": {
+              "command": "/opt/flexprop/bin/flexspin"
+            },
+            "args": ["-2", "-Wabs-paths", "-Wmax-errors=99", "${config:topLevel}.spin2"],
+            "problemMatcher": {
+              "owner": "Spin2",
+              "fileLocation": ["autoDetect", "${workspaceFolder}"],
+              "pattern": {
+                "regexp": "^(.*):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                "file": 1,
+                "line": 2,
+                "severity": 3,
+                "message": 4
+              }
+            },
+            "presentation": {
+              "panel": "shared",
+              "focus": true
+            },
+            "group": {
+              "kind": "build",
+              "isDefault": true
+            }
+          },
+          {
+            "label": "downloadP2",
+            "type": "shell",
+            "osx": {
+              "command": "/Applications/flexprop/bin/loadp2.mac",
+              "args": ["-b230400", "${config:topLevel}.binary", "-t"]
+            },
+            "windows": {
+              "command": "loadp2.exe",
+              "args": ["-b230400", "${config:topLevel}.binary", "-t", "-pCOM9"]
+            },
+            "linux": {
+              "command": "/opt/flexprop/bin/loadp2",
+              "args": ["-b230400", "${config:topLevel}.binary", "-t", "-p/dev/ttyUSB0"]
+            },
+            "problemMatcher": [],
+            "presentation": {
+              "panel": "shared",
+              "focus": true
+            },
+            "group": {
+              "kind": "test",
+              "isDefault": true
+            },
+            "dependsOn": ["compileTopP2"]
+          },
+          {
+            "label": "flashP2",
+            "type": "shell",
+            "osx": {
+              "command": "/Applications/flexprop/bin/loadp2.mac",
+              "args": ["-b230400", "@0=/Applications/flexprop/board/P2ES_flashloader.bin,@8000+${config:topLevel}.binary", "-t", "-k"]
+            },
+            "windows": {
+              "command": "loadp2.exe",
+              "args": ["-b230400", "@0=${env:FlexSpinPath}/board/P2ES_flashloader.bin,@8000+${config:topLevel}.binary", "-t", "-k"]
+            },
+            "linux": {
+              "command": "/opt/flexprop/bin/loadp2",
+              "args": ["-b230400", "@0=/opt/flexprop/board/P2ES_flashloader.bin,@8000+${config:topLevel}.binary", "-t", "-p/dev/ttyUSB0"]
+            },
+            "problemMatcher": [],
+            "presentation": {
+              "panel": "shared",
+              "focus": true
+            },
+            "group": {
+              "kind": "test",
+              "isDefault": true
+            },
+            "dependsOn": ["compileTopP2"]
+          },
+    ]
+}

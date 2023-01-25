@@ -7,7 +7,6 @@
   PropellerTool 2.7.0   -    55,712                     4,548
   FlexProp 5.9.23       -    102,260
 }
-
 CON
   _clkfreq = 200_000_000
 
@@ -59,7 +58,6 @@ OBJ
   keypad                        : "Keypad"
   'widget                        : "Widget_Template"    '796 bytes    76 bytes
 
-
 DAT
 ''+--------------------------------------------------------------------------+
 '' GUI images files (see document how to create these images)
@@ -70,7 +68,6 @@ banner FILE "demo_banner.p2"
 red_led FILE "red_led.p2"
 orange_led FILE "orange_led.p2"
 green_led FILE "green_led.p2"
-
 
 VAR
   LONG drawing_method_pointer
@@ -87,6 +84,9 @@ VAR
   BYTE hi_pot_limit
   BYTE low_pot_limit
 
+''+--------------------------------------------------------------------+
+''Main method
+''+--------------------------------------------------------------------+
 PUB main()| inc, sine_val, pot_val, z
   current_screen := SCREEN_1
   BACKGROUND_COLOR := color.white
@@ -94,21 +94,16 @@ PUB main()| inc, sine_val, pot_val, z
   inc := 1
 
   setup_encoder()
-
   init_gui()                    'Prepare P2GUI framework
   gui.draw()                    'Draw GUI for the first time
   last_time := getms()
 
-
-
-''+--------------------------------------------------------------------+
-''   MAIN APPLICATION LOOP
-''+--------------------------------------------------------------------+
+  ''+--------------------------------------------------------------------+
+  ''   MAIN APPLICATION LOOP
+  ''+--------------------------------------------------------------------+
   repeat
     'GUI scan (handle touch events and updates)
     gui.scan()
-
-    'neotimer.set_time(scaled_read(8, 0, 100))
 
     'Continuous logic (repeats every DATA_COLLECTION_TIME interval)
     if auto_mode AND neotimer.repeat_execution()
@@ -370,22 +365,6 @@ PUB init_gui()
 
 
 ''+--------------------------------------------------------------------+
-'' Screen 3
-''+--------------------------------------------------------------------+
-  'screen[SCREEN_3].configure(SCREEN_3,0,40,240,228,BACKGROUND_COLOR, color.black, color.white)
-  'screen[SCREEN_3].set_border_width(0)
-  'screen[SCREEN_3].set_enable(false)
-  'gui.add_widget(@screen[SCREEN_3].set_enable, @screen[SCREEN_3].draw, @screen[SCREEN_3].check_event)
-  'debug("Added SCREEN_3")
-
-
-
-
-
-
-
-
-''+--------------------------------------------------------------------+
 ''   WIDGETS EVENT HANDLING METHODS
 ''+--------------------------------------------------------------------+
 PUB menu_event_handler(id,val)| startx, starty, size, endx, endy
@@ -425,21 +404,6 @@ PUB menu_0_event_handler(id)
     'Select text for menu
     text[MENU_0_TXT].set_contents(String("Screen 2"))
     
-{
-  elseif screen[SCREEN_3].is_enabled()
-    'Select screen to show
-    screen[SCREEN_1].set_enable(true)
-    screen[SCREEN_2].set_enable(false)
-    screen[SCREEN_3].set_enable(false)
-
-    'Show screen
-    screen[SCREEN_1].draw()
-    current_screen := SCREEN_1
-
-    'Select text for menu
-    text[MENU_0_TXT].set_contents(String("Screen 2"))
-}
-
 
 PRI hide_menu()
   screen[MENU_SCR].set_enable(false)
