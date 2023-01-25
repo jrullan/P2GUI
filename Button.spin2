@@ -1,5 +1,18 @@
 {
   Button Object
+
+  Represents a button that is used as an input signal
+  The button object can be a Toggle button or a normal button.
+  When set as a toggle button it will alternate between it's
+  active and inactive values on consecutive touch events.
+
+  When a button claims an event, it calls the its event handler 
+  method pointer and passes its ID and its value as parameters.
+  The button object debounces the event to prevent unwanted triggering
+  of the event handler.
+
+  A button object also has a contents buffer that stores the 
+  text that is going to be drawn inside it.
 }
 CON
   'DEBOUNCE_TIMER = 500

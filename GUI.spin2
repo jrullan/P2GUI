@@ -1,4 +1,21 @@
-{GUI Object}
+{
+  GUI Object
+
+  This is the main object of the P2GUI framework.
+  It serves the following purposes:
+
+  1) It is the container of all other widgets and screens
+  2) It wraps the display and the touchscreen drivers
+  3) It is the default recipient of any touch event 
+  4) It passes down the touch event to all its children
+    until one of them claims the event.
+  5) It contains 9 area objects to provide a visual guide 
+    of the general layout of the application 
+  6) It initializes the Graphics object to expose
+    all of the driver's drawing methods through the use
+    of method pointers.
+  7) It is responsible of initially drawing all enabled widgets
+}
 
 CON
   DEBOUNCE_TIMER = 100
@@ -108,7 +125,7 @@ PUB configure_display(cal)
   'parameters: width,height,rotation,touchscreen
   display.Start(width, height, rotation, true)
 
-  if cal
+  if cal <> 0
     display.calibrateTouch()
   else
     display.set_calibration(-3714, -3531, 3_935, 3_784)
@@ -234,19 +251,13 @@ PUB draw_all_widgets()|w
   if widget_counter > 0
     repeat w from 0 to widget_counter-1
       widget_draw_method[w]()                             'call widget's draw()
-      'debug("Drawed widget ", udec(w))
 
 PUB draw()
 '' Canvas draw, first clears the screen and then draws all the windows
   if display_configured
     display.clearScreen()
-    'debug("Cleared Screen")
-
     draw_all_areas()
-    'debug("Drawed all areas")
-
     draw_all_widgets()
-    'debug("Drawed all widgets")
 
 
 ''+--------------------------------------------------------------------+
