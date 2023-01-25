@@ -5,7 +5,7 @@
   Memory usage is
                              Code/Data                  Variables
   PropellerTool 2.7.0   -    55,712                     4,548
-  FlexProp 5.9.23       -    102,260
+  FlexProp 5.9.23       -    144,012
 }
 CON
   _clkfreq = 200_000_000
