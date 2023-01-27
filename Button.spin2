@@ -177,7 +177,7 @@ PUB set_event_handler(Method)
   event_handler := Method    'Sets the default event handler of this object
 
 PUB call_event_handler(Method)
-  Method(id)                    'Calls a passed event handler
+  Method(id,value)                    'Calls a passed event handler
 
 ''+--------------------------------------------------------------------+
 ''   OTHER METHODS
