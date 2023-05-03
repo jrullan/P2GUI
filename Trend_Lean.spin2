@@ -153,6 +153,7 @@ PUB plot_value(val)
   'Clear old values
   clear_plot()
 
+  'debug("set_data_val ", sdec(val))
   set_data_value(val)
 
   'Plot Data
@@ -280,7 +281,6 @@ PUB set_data_value(v)|d
     BYTE[data][d] := BYTE[data][d+1]
 
   'Add the new value
-  d++
   BYTE[data][d] := v
 
   ' debug(udec(BYTE[data][d]), udec(v))

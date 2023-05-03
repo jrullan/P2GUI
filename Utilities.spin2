@@ -65,16 +65,17 @@ PUB rotate_image_rotxy(orig, rotated, angle)| xr, yr, x, y, xa, ya
   repeat x from 0 to 15
     repeat y from 0 to 15
 
-      'yr,xr := ROTXY(x-8, y-8, angle*DEGREE)            'fastest, wrong order of return results
+      'xr, yr := ROTXY(x-8, y-8, angle*DEGREE)            'fastest, wrong order of return results
       xr, yr := rotate_point(x-8, y-8, angle)          'slightly slower, correct order of results
-
       'Constrain to avoid drawing defects
       xr := -8 #> xr <# 7
       yr := -8 #> yr <# 7
 
       WORD[rotated][yr+8].[xr+8] := WORD[orig][y].[x]
 
-
+PUB debug_icon(ptr)|y
+  repeat y from 0 to 15
+    debug(ubin_word(WORD[ptr][y]))
 
 ''+--------------------------------------------------------------------+
 ''   Text Methods
