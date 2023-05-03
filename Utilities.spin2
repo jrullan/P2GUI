@@ -79,20 +79,25 @@ PUB rotate_image_rotxy(orig, rotated, angle)| xr, yr, x, y, xa, ya
 ''+--------------------------------------------------------------------+
 ''   Text Methods
 ''+--------------------------------------------------------------------+
-PUB debug_string(s)|k, i
-  debug("Debugging string: ", uhex(s))
+PUB debug_string(s)|k, i, n
+  debug("Debugging string: ", ZSTR(s))
+  debug("characters:")
   i := 0
   repeat
     k := BYTE[s][i++]
     debug(uhex_byte(k))
     if k == 0
       quit
+  n := i-1
+  debug("total characters: ", udec(n))
+
 
 PUB get_characters(buffer):characters|val
 ''Get number of characters in buffer
 {
   Checks buffer for characters until a terminating 0 is found
 }
+  'debug(ZSTR(buffer))
   repeat
     val := BYTE[buffer + characters]
     if val == 0

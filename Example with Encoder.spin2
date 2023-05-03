@@ -361,7 +361,7 @@ PUB init_gui()
   keypad.set_enable(true)
   screen[SCREEN_2].add_widget(@keypad.set_enable, @keypad.draw, @keypad.check_event)
   debug("Added KEYPAD")
-  
+
 
 
 ''+--------------------------------------------------------------------+
@@ -383,11 +383,11 @@ PUB menu_0_event_handler(id)
     screen[SCREEN_1].set_enable(false)
     screen[SCREEN_2].set_enable(true)
     screen[SCREEN_3].set_enable(false)
-    
+
     'Show screen
     screen[SCREEN_2].draw()
     current_screen := SCREEN_2
-    
+
     'Select text for menu
     text[MENU_0_TXT].set_contents(String("Screen 1"))
 
@@ -403,7 +403,7 @@ PUB menu_0_event_handler(id)
 
     'Select text for menu
     text[MENU_0_TXT].set_contents(String("Screen 2"))
-    
+
 
 PRI hide_menu()
   screen[MENU_SCR].set_enable(false)
