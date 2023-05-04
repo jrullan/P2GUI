@@ -479,8 +479,8 @@ PUB bg_event_handler(id,val)|s,bg,fg,ol
 
   trend.set_bg_color(BACKGROUND_COLOR)
   dial.set_bg_color(BACKGROUND_COLOR)
-
   screen[current_screen].draw()
+  dial.update(dial.get_value())
 
 PUB set_value_event_handler(id, val)
   neotimer.set_time(100 - dial.get_value())
