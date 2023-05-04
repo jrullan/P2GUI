@@ -4,8 +4,10 @@
   A simple application that demonstrates all the widgets.
   Memory usage is
                             Code/Data                  Variables
-  PropellerTool 2.7.0   -    105,876                     4,548
-  FlexProp 5.9.23       -    144,012
+  PropellerTool 2.9.3   -    106,276                     4,304
+  Simple Tools v0.27.3  -    102,660                     4,304
+  FlexProp 6.1.1        -    143,960
+
 }
 CON
   _clkfreq = 200_000_000

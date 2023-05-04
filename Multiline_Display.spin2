@@ -277,7 +277,7 @@ PUB draw_multi_text(x,y)| chars, n, w, h, k, charn, vertical_increment, newx, ne
 
 PUB writeln(addr)|c,i,chars,buffer_size
   util.clear_string(@line_contents, MAX_CHARS_PER_LINE)
-  util.debug_string(addr)
+  'util.debug_string(addr)
 
   if order == TOP_BOTTOM
     move_lines_down(addr)
