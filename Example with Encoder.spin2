@@ -143,20 +143,20 @@ PUB main()| inc, sine_val, z
       dial.update(pot_val)
 
       if pot_val <> last_pot_val
-        if pot_val < 31 AND (low_pot_limit == false)
+        if pot_val <= 29 AND (low_pot_limit == false)
           icon[RED_ICO].set_value(true)
           red_led_event_handler(RED_ICO,true)
           low_pot_limit := true
-        elseif pot_val > 29 and (low_pot_limit)
+        elseif pot_val >= 31 and (low_pot_limit)
           icon[RED_ICO].set_value(false)
           red_led_event_handler(RED_ICO,false)
           low_pot_limit := false
 
-        if pot_val > 71 AND (hi_pot_limit == false)
+        if pot_val >= 71 AND (hi_pot_limit == false)
           icon[GREEN_ICO].set_value(true)
           green_led_event_handler(GREEN_ICO,true)
           hi_pot_limit := true
-        elseif pot_val < 69 AND (hi_pot_limit)
+        elseif pot_val <= 69 AND (hi_pot_limit)
           icon[GREEN_ICO].set_value(false)
           green_led_event_handler(GREEN_ICO,false)
           hi_pot_limit := false
@@ -321,22 +321,16 @@ PUB init_gui()
 
   icon[GREEN_ICO].set_image(@green_led,40,40)
   icon[GREEN_ICO].configure(GREEN_ICO,5,170,color.black,color.black,color.grey)
+  icon[GREEN_ICO].set_darken_factor(12)
   icon[GREEN_ICO].set_mode(button.TOGGLE_MODE)
   icon[GREEN_ICO].set_event_handler(@green_led_event_handler)
   icon[GREEN_ICO].set_enable(true)
   screen[SCREEN_1].add_widget(@icon[GREEN_ICO].set_enable, @icon[GREEN_ICO].draw, @icon[GREEN_ICO].check_event)
   debug("Added green LED icon")
 
-  icon[ORANGE_ICO].set_image(@orange_led,40,40)
-  icon[ORANGE_ICO].configure(ORANGE_ICO,0,215,color.black,color.black,color.grey)
-  icon[ORANGE_ICO].set_mode(button.TOGGLE_MODE)
-  icon[ORANGE_ICO].set_event_handler(@orange_led_event_handler)
-  icon[ORANGE_ICO].set_enable(true)
-  'screen[SCREEN_1].add_widget(@icon[ORANGE_ICO].set_enable, @icon[ORANGE_ICO].draw, @icon[ORANGE_ICO].check_event)
-  debug("Added orange LED icon")
-
   icon[RED_ICO].set_image(@red_led,40,40)
   icon[RED_ICO].configure(RED_ICO,5,220,color.black,color.black,color.grey)
+  icon[RED_ICO].set_darken_factor(12)
   icon[RED_ICO].set_mode(button.TOGGLE_MODE)
   icon[RED_ICO].set_event_handler(@red_led_event_handler)
   icon[RED_ICO].set_enable(true)
