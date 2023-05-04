@@ -37,7 +37,6 @@ PUB scale(x,xmin,xmax,ymin,ymax):y | b, yr, xr
   b := (ymax - (yr * xmax)/xr) 'm = yr/xr, but have to multiply first by xmax to prevent 0 when yr < xr (integer math)
   y := x*yr/xr + b
 
-
 PUB pol_to_xy(l,angle):x,y
 ''Calculates xy for l,angle
 {
@@ -52,6 +51,7 @@ PUB pol_to_xy(l,angle):x,y
   END
 
 PUB rotate_point(xi,yi,a):x,y
+'' Does the same as ROTXY
   a := a*DEGREE
   ORG
     SETQ yi
@@ -61,26 +61,28 @@ PUB rotate_point(xi,yi,a):x,y
   END
 
 PUB rotate_image_rotxy(orig, rotated, angle)| xr, yr, x, y, xa, ya
-''Rotate 16x16 image (top-left is 0,0)
+''Rotate 16x16 orig image into rotated (top-left is 0,0)
   repeat x from 0 to 15
     repeat y from 0 to 15
 
-      'xr, yr := ROTXY(x-8, y-8, angle*DEGREE)            'fastest, wrong order of return results
-      xr, yr := rotate_point(x-8, y-8, angle)          'slightly slower, correct order of results
+      xr, yr := ROTXY(x-8, y-8, angle*DEGREE)           'fastest
+      'xr, yr := rotate_point(x-8, y-8, angle)          'slightly slower
       'Constrain to avoid drawing defects
       xr := -8 #> xr <# 7
       yr := -8 #> yr <# 7
 
       WORD[rotated][yr+8].[xr+8] := WORD[orig][y].[x]
 
+''+--------------------------------------------------------------------+
+''   Debugging Methods
+''+--------------------------------------------------------------------+
 PUB debug_icon(ptr)|y
+'' Utility to debug contents of 16x16 image array
   repeat y from 0 to 15
     debug(ubin_word(WORD[ptr][y]))
 
-''+--------------------------------------------------------------------+
-''   Text Methods
-''+--------------------------------------------------------------------+
 PUB debug_string(s)|k, i, n
+'' Utility to debug zero terminated strings
   debug("Debugging string: ", ZSTR(s))
   debug("characters:")
   i := 0
@@ -92,7 +94,9 @@ PUB debug_string(s)|k, i, n
   n := i-1
   debug("total characters: ", udec(n))
 
-
+''+--------------------------------------------------------------------+
+''   Text Methods
+''+--------------------------------------------------------------------+
 PUB get_characters(buffer):characters|val
 ''Get number of characters in buffer
 {
@@ -117,7 +121,6 @@ PUB get_non_space_characters(buffer):characters|val
       quit
     else
       characters++
-
 
 PUB get_text_width(buffer, font_size, compression):w|n,c
   n := 0
@@ -201,14 +204,12 @@ PUB set_value(val,buffer)|n,digits,exp_val,char_val,prev_digits,extra,c
 
   BYTE[buffer+digits+extra] := 0                                    'string terminating 0
 
-
 PUB set_value_ns(val,buffer)|n,digits,exp_val,char_val
-''Fill buffer with digits of val
+''Fill buffer with digits of val no-spaces
 {
   Takes an integer val and convert it to
   characters representing its digits in buffer
 }
-
   digits := get_digits(val)
 
   if val == 0
@@ -224,7 +225,6 @@ PUB set_value_ns(val,buffer)|n,digits,exp_val,char_val
 
   BYTE[buffer+digits] := 0                                    'string terminating 0
 
-
 PUB get_value(buffer):value|digits, char, d
 ''Returns value of buffer
 {
@@ -238,6 +238,7 @@ PUB get_value(buffer):value|digits, char, d
       value := (char - $30)*exponent(10,(digits-d-1)) + value
 
 PUB join_strings(string1_ptr, string2_ptr, result_ptr, max)|c1,c2,c,k
+'' Join zero terminated strings into new string
   'First string
   repeat c1 from 0 to max-1
     k := Byte[string1_ptr + c1]
@@ -259,9 +260,8 @@ PUB join_strings(string1_ptr, string2_ptr, result_ptr, max)|c1,c2,c,k
   'End character (0)
   Byte[result_ptr + c] := 0
 
-
-
 PUB clear_string(addr, max)|i
+'' Clears a zero terminated string (all values == 0)
   repeat i from 0 to max
     BYTE[addr][i] := 0
 
@@ -269,6 +269,7 @@ PUB clear_string(addr, max)|i
 ''   Drawing Methods
 ''+--------------------------------------------------------------------+
 PUB draw_border(xt,yt,xb,yb,c,w,invert)| i, l_color, d_color
+'' Draws a border (Used by widgets)
 {
   ptr - pointer to drawing_method array of method pointers
   xt,yt,xb,yb - coordinates of rectangle
@@ -293,11 +294,9 @@ PUB draw_border(xt,yt,xb,yb,c,w,invert)| i, l_color, d_color
       graphics.draw_line(xb-i,yt+i,xb-i,yb-i,d_color)
       'Bottom side
       graphics.draw_line(xt+i,yb-i,xb-i,yb-i,d_color)
-{
-DAT
-        execution_time LONG 0
-}
+
 PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color)| chars, n, w, h, k, k_old, xs, xe, execution_time
+'' Draws a zero terminated string on the display
 {
   Draws buffer text on screen at x,y position.
 
@@ -334,9 +333,6 @@ PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color
   graphics.set_foreground_color(fg_color)
 
   if previous_buffer <> 0
-
-    'execution_time := getct()
-
     'Draw characters that are different from previous value
     repeat n from 0 to chars-1
       k := BYTE[buffer+n]
@@ -359,13 +355,7 @@ PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color
           graphics.draw_char(k)
           Byte[previous_buffer+n] := k
 
-    'execution_time := 1_000  * (getct() - execution_time) / (clkfreq/1000)
-    'debug("Buffered text display time: ",udec(execution_time))
-
   else
-
-    'execution_time_1 := getct()
-
     'Draw all characters
     repeat n from 0 to chars-1
       k := BYTE[buffer+n]
@@ -383,11 +373,8 @@ PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color
         graphics.set_window(xs, y, xe, y+h)
         graphics.draw_char(k)
 
-    'execution_time_1 := 1_000  * (getct() - execution_time_1) / (clkfreq/1000)
-    'debug("Unbuffered text display time: ",udec(execution_time_1))
-
-
 PUB draw_image(image_pointer, xpos, ypos, width, height, transparent_color)| pixel, x, y
+'' Draws image stored in FILE at xpos, ypos
 {
   image_pointer - address of image in hub memory
   transparent_color - color to ignore when painting pixels
@@ -414,8 +401,8 @@ PUB draw_image(image_pointer, xpos, ypos, width, height, transparent_color)| pix
       if pixel <> transparent_color
         graphics.draw_pixel(xpos+x,ypos+y,pixel)
 
-
 PUB draw_image_area(image_pointer, xpos, ypos, width, height, transparent_color, axt, ayt, axb, ayb) | area_pointer, ah, aw, x, y, pixel
+'' Draws partial image area defined by axt, ayt, axb, ayb
 {
   image_pointer - address of image
   xpos - top-left coordinate of image
@@ -428,14 +415,10 @@ PUB draw_image_area(image_pointer, xpos, ypos, width, height, transparent_color,
   axb - area bottom x
   ayb - area bottom y
 }
-
   area_pointer := image_pointer + 2*(axt - xpos) + 2*(ayt - ypos)*width
-  'debug(udec(xpos), udec(axt), udec(ypos), udec(ayt))
 
   ah := ayb - ayt
   aw := axb - axt
-
-  'debug(udec(image_pointer), udec(area_pointer), udec(aw), udec(ah), udec(axt), udec(ayt), udec(axb), udec(ayb))
 
   repeat y from 0 to ah-1
     repeat x from 0 to aw-1
@@ -443,8 +426,8 @@ PUB draw_image_area(image_pointer, xpos, ypos, width, height, transparent_color,
       if pixel <> transparent_color
         graphics.draw_pixel(axt+x, ayt+y, pixel)
 
-
 PUB draw_darken_image(image_pointer, xpos, ypos, width, height, transparent_color, darken_factor) | pixel, x, y
+'' Draws a darkened version of an image using darken_factor
   if image_pointer == 0
     return
 
@@ -455,11 +438,11 @@ PUB draw_darken_image(image_pointer, xpos, ypos, width, height, transparent_colo
         pixel := color.darken(pixel, darken_factor)
         graphics.draw_pixel(xpos+x,ypos+y,pixel)
 
-
 ''+--------------------------------------------------------------------+
 ''   Other Methods
 ''+--------------------------------------------------------------------+
 PUB red_to_green(val, min, max):c | mid, r, g
+'' Utility to create a color based on a value in the Red-Green range
 {
   Returns a color from red to green based on the
   value passed. Red represents the min parameter

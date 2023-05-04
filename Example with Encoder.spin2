@@ -116,10 +116,8 @@ PUB main()| inc, sine_val, pot_val, z
         debug(udec(getms()-last_time))
         last_time := getms()
 
-
       'Sine wave based on the value of x
       sine_val := Qsin(50,x,50)+ 50
-
 
       if current_screen == SCREEN_1 AND screen[SCREEN_1].is_enabled() AND NOT(gui.is_screen_saving())
         'Update trend plot
@@ -166,12 +164,10 @@ PUB main()| inc, sine_val, pot_val, z
           hi_pot_limit := false
       last_pot_val := pot_val
 
-
       'Using a neotimer debouncer since the jm_quadrature object debouncer
       'behaves differently
       if knob_debouncer.debounce(knob.button(0))
         set_value_event_handler(0,0)
-
 
 
 ''+--------------------------------------------------------------------+
