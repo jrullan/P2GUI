@@ -73,15 +73,16 @@ green_led FILE "green_led.p2"
 
 VAR
   LONG drawing_method_pointer
+  LONG cal_low
+  LONG cal_high
+  LONG last_time
+  WORD BACKGROUND_COLOR
+  BYTE trend_values[MAX_DATA_VALUES]
+  BYTE btn_value[4]
   BYTE current_screen
   BYTE auto_mode
   BYTE x
-  WORD BACKGROUND_COLOR
-  BYTE trend_values[MAX_DATA_VALUES]
-  LONG last_time
-  BYTE btn_value[4]
-  LONG cal_low
-  LONG cal_high
+  BYTE pot_val
   BYTE last_pot_val
   BYTE hi_pot_limit
   BYTE low_pot_limit
@@ -89,7 +90,7 @@ VAR
 ''+--------------------------------------------------------------------+
 ''Main method
 ''+--------------------------------------------------------------------+
-PUB main()| inc, sine_val, pot_val, z
+PUB main()| inc, sine_val, z
   current_screen := SCREEN_1
   BACKGROUND_COLOR := color.white
   neotimer.init(DATA_COLLECTION_TIME) 'For repeating logic in a non-blocking time interval
@@ -138,10 +139,7 @@ PUB main()| inc, sine_val, pot_val, z
     if current_screen == SCREEN_1 AND screen[SCREEN_1].is_enabled() AND NOT(gui.is_screen_saving())
       pot_val :=  knob.value()
       'Update dial indicator
-      if BACKGROUND_COLOR == color.white
-        dial.set_fg_color(color.darken(color.set_color(50,190,255),8))
-      else
-        dial.set_fg_color(util.red_to_green(pot_val,0,100))
+      update_dial_fg()
       dial.update(pot_val)
 
       if pot_val <> last_pot_val
@@ -479,8 +477,15 @@ PUB bg_event_handler(id,val)|s,bg,fg,ol
 
   trend.set_bg_color(BACKGROUND_COLOR)
   dial.set_bg_color(BACKGROUND_COLOR)
+  update_dial_fg()
   screen[current_screen].draw()
-  dial.update(dial.get_value())
+  'dial.update(dial.get_value())
+
+PRI update_dial_fg()
+  if BACKGROUND_COLOR == color.white
+    dial.set_fg_color(color.darken(color.set_color(50,190,255),8))
+  else
+    dial.set_fg_color(util.red_to_green(pot_val,0,100))
 
 PUB set_value_event_handler(id, val)
   neotimer.set_time(100 - dial.get_value())
