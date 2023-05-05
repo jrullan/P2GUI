@@ -462,6 +462,47 @@ PUB drawCircle(xc, yc, r, rgb) | x, y
     drawPixel(xc+y, yc-x, rgb)
     drawPixel(xc-y, yc-x, rgb)
 
+{
+PUB fillCircle(xc, yc, r, rgb)|x,y,xr,yr,d,a
+' Draws a filled circle using ROTXY
+  d := $80000000 / 180 'degrees unit in 32 bits
+  x := 0
+  y := r
+  a := 0
+
+  repeat a from 0 to 45 step 2
+    xr,yr := ROTXY(x,y,a*d)
+
+    'Window requires start column < end column and start row < end row
+    setWindow(xc-yr,yc-xr,xc+yr,yc+xr)
+    fillWindow(rgb)
+
+    'Window requires start column < end column and start row < end row
+    setWindow(xc-xr,yc-yr,xc+xr,yc+yr)
+    fillWindow(rgb)
+}
+
+PUB fillCircle(xc, yc, r, rgb)|x,y,xr,yr,d
+'Faster than above approach
+'The most efficient algorithm for creating a filled circle is
+'the Midpoint Circle Algorithm, also known as Bresenham's Circle Algorithm.
+  x := 0
+  y := r
+  d := 1 - r
+  repeat while x <= y
+    drawLine(xc-x, yc+y, xc+x, yc+y, rgb) 'last
+    drawLine(xc-x, yc-y, xc+x, yc-y, rgb) 'top
+    drawLine(xc-y, yc+x, xc+y, yc+x, rgb) 'third
+    drawLine(xc-y, yc-x, xc+y, yc-x, rgb) 'second
+
+    x++
+    if d < 0
+      d := d + 2*x + 3
+    else
+      y--
+      d := d + 2*(x - y) + 5
+
+
 PUB fillRectangle(xs, ys, xe, ye, rgb)
   setWindow(xs, ys, xe, ye)
   fillWindow(rgb)

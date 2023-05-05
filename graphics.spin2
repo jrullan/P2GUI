@@ -38,6 +38,7 @@ _draw_circle  long 0
 _draw_rectangle  long 0
 _fill_rectangle  long 0
 _select_font_size long 0
+_fill_circle long 0
 
 
 PUB set_pointer(index, ptr)|addr
@@ -93,3 +94,6 @@ PUB fill_rectangle(xs,yx,xe,ye,rgb)
 
 PUB select_font_size(s)
   _select_font_size(s)
+
+PUB fill_circle(xc,yc,r,rgb)
+  _fill_circle(xc,yc,r,rgb)

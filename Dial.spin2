@@ -83,6 +83,7 @@ PUB draw()| b, c, d, ticks , i
   if enabled
     'FILL
     graphics.fill_rectangle(xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
+    'graphics.fill_circle(xc,yc,radius,bg_color)
 
     'BORDER
     repeat b from 0 to border_width-1

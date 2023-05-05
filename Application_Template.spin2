@@ -39,7 +39,7 @@ DAT
 VAR
   WORD BACKGROUND_COLOR
 
-PUB main()| x, inc
+PUB main()
   BACKGROUND_COLOR := color.black
   init_gui()
   debug("Finished init_gui()")
@@ -49,6 +49,7 @@ PUB main()| x, inc
   repeat
 
     'Continous logic here...
+
 
     'GUI scan (handle touch events and updates)
     gui.scan()
@@ -89,6 +90,7 @@ PUB init_gui()
   button[P_BTN].set_enable(true)
   button[P_BTN].set_event_handler(@button_event_handler)
   gui.add_widget(@button[P_BTN].set_enable, @button[P_BTN].draw, @button[P_BTN].check_event)
+
 
 
 ''+--------------------------------------------------------------------+

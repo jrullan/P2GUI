@@ -6,11 +6,11 @@
 
   1) It is the container of all other widgets and screens
   2) It wraps the display and the touchscreen drivers
-  3) It is the default recipient of any touch event 
+  3) It is the default recipient of any touch event
   4) It passes down the touch event to all its children
     until one of them claims the event.
-  5) It contains 9 area objects to provide a visual guide 
-    of the general layout of the application 
+  5) It contains 9 area objects to provide a visual guide
+    of the general layout of the application
   6) It initializes the Graphics object to expose
     all of the driver's drawing methods through the use
     of method pointers.
@@ -31,7 +31,7 @@ CON
 'Drawing Methods Constants (for mapping driver methods to graphics methods)
   #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
   #6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
-  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, MAX_METHODS
+  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, FILL_CIRCLE, MAX_METHODS
 
   MAX_WIDGETS = 10
 
@@ -109,6 +109,7 @@ PUB init(bg, fg, ol, o, cal) |  i
   graphics.set_pointer(DRAW_RECTANGLE, @display.drawRectangle)
   graphics.set_pointer(FILL_RECTANGLE, @display.fillRectangle)
   graphics.set_pointer(SELECT_FONT_SIZE, @display.SelectFontSize)
+  graphics.set_pointer(FILL_CIRCLE, @display.fillCircle)
 
   'set all areas colors to match canvas
   repeat i from 0 to 8
