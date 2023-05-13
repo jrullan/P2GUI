@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UI Mockup Tool</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="toolbar-container">
+        <div id="gui-config-toolbar">
+            <div class="inputs">
+                <label for="gui-width">Width: </label>
+                <input type="number" id="gui-width" value="240" class="short">
+                <label for="gui-height">Height: </label>
+                <input type="number" id="gui-height" value="320" class="short">
+                <label for="gui-color">Color: </label>
+                <input type="color" id="gui-color" value="#D3D3D3">
+            </div>
+			<div class="inputs">
+                <label for="grid-size">Grid Size:</label>
+			    <input type="number" id="grid-size" value="10" class="short">
+            </div>
+			<div class="inputs">
+                <button id="gui-update">Update GUI</button>
+            </div>
+        </div>
+
+        <div id="widget-config-toolbar">
+            <select id="widget-type">
+				<option value="" selected disabled hidden>Select a widget type</option>
+                <option value="button">Button</option>
+                <option value="text">Text</option>
+                <option value="gauge">Gauge</option>
+                <option value="dial">Dial</option>
+                <option value="trend">Trend</option>
+            </select>
+            <div class="inputs">
+                <label for="widget-width">Width: </label>
+                <input type="number" id="widget-width" class="short">
+                <label for="widget-height">Height: </label>
+                <input type="number" id="widget-height" class="short">
+            </div>
+            <div class="inputs">
+                <label for="widget-fill-color">Fill Color: </label>
+                <input type="color" id="widget-fill-color">
+                <label for="widget-text-color">Text Color: </label>
+                <input type="color" id="widget-text-color">
+                <label for="widget-border-color">Border Color: </label>
+                <input type="color" id="widget-border-color">
+            </div>
+            <div class="inputs">
+                <label for="widget-x-pos">X Position: </label>
+                <input type="number" id="widget-x-pos" class="short">
+                <label for="widget-y-pos">Y Position: </label>
+                <input type="number" id="widget-y-pos" class="short">
+            </div>
+            <div class="inputs">
+                <button id="widget-create-update">Create/Update Widget</button>
+                <button id="widget-duplicate">Duplicate Widget</button>
+			    <button id="remove-widget">Remove Widget</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="gui-container">
+    </div>
+
+    <div>
+        <div class="inputs">
+            <button id="show-code-button">Show Code</button>
+        </div>
+        <ul id="widgets-list">
+
+        </ul>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

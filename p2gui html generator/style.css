@@ -1,0 +1,54 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+div.inputs {
+    padding: 10px;
+}
+
+input.short {
+    width: 40px;
+}
+
+button {
+    padding: 5px;
+}
+
+#toolbar-container {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+#widget-type {
+    padding: 5px;
+}
+
+#gui-config-toolbar,
+#widget-config-toolbar {
+    display: flex;
+    flex-direction: column;
+}
+
+#gui-container {
+    position: relative;
+    margin: 20px auto;
+    background-color: #D3D3D3;
+    border: 1px solid rgb(0,0,0);
+    width: 240px;
+    height: 320px;
+}
+
+#widgets-list {
+    font-family: monospace;
+}
+
+.widget {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: space-around;
+    justify-content: center;
+    position: absolute;
+    cursor: move;
+}
