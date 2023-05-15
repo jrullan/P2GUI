@@ -34,18 +34,18 @@ button {
     border: 1px solid rgb(230,230,230);
 }
 
+#working-table{
+    display: table;
+    padding: 10px;
+}
 
 #working-area {
-    display: inline-flex;
+    display: table-row;
 }
 
-
-#code {
-    display: inline-block;
-}
 
 #gui-container {
-    display: inline-flex;
+    display: table-cell;
     position: relative;
     margin: 20px auto;
     background-color: #D3D3D3;
@@ -53,6 +53,12 @@ button {
     width: 240px;
     height: 320px;
 }
+
+#code {
+    display: table-cell;
+}
+
+
 
 #widgets-list {
     font-family: monospace;
