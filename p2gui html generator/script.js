@@ -210,6 +210,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			selectedWidget.style.left = x + 'px';
 			selectedWidget.style.top = y + 'px';
+
+			createCode();
 		}
 	});	
 	
@@ -236,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		**dial[id].configure(id, x, y, radius, bg_color, fg_color, ol_color)
 
 	*/
-	document.getElementById("show-code-button").addEventListener('click',function(){
+	function createCode(){
 		let widgets = guiContainer.children;
 		let widgetList = document.getElementById("widgets-list");
 		widgetList.innerHTML = '';
@@ -292,23 +294,25 @@ document.addEventListener('DOMContentLoaded', () => {
 				widgetList.appendChild(listItem);
 			}
 		}
-	});
+	}
+
 });
 
-// Function to create color string for P2
-function rgbToP2(rgb){
-	const result = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(rgb);
-	return result ? "color.set_color(" + 
-	parseInt(result[1], 10).toString() + 
-	"," + parseInt(result[2],10).toString() + 
-	"," + parseInt(result[3],10).toString() + 
-	")" : null;
-}
 
-function rgbToHex(rgb) {
-    const result = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(rgb);
-    return result ? "#" +
-        ("0" + parseInt(result[1], 10).toString(16)).slice(-2) +
-        ("0" + parseInt(result[2], 10).toString(16)).slice(-2) +
-        ("0" + parseInt(result[3], 10).toString(16)).slice(-2) : null;
-}
+	// Function to create color string for P2
+	function rgbToP2(rgb){
+		const result = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(rgb);
+		return result ? "color.set_color(" + 
+		parseInt(result[1], 10).toString() + 
+		"," + parseInt(result[2],10).toString() + 
+		"," + parseInt(result[3],10).toString() + 
+		")" : null;
+	}
+
+	function rgbToHex(rgb) {
+		const result = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(rgb);
+		return result ? "#" +
+			("0" + parseInt(result[1], 10).toString(16)).slice(-2) +
+			("0" + parseInt(result[2], 10).toString(16)).slice(-2) +
+			("0" + parseInt(result[3], 10).toString(16)).slice(-2) : null;
+	}
