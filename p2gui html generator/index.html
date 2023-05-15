@@ -25,14 +25,16 @@
         </div>
 
         <div id="widget-config-toolbar">
-            <select id="widget-type">
-				<option value="" selected disabled hidden>Select a widget type</option>
-                <option value="button">Button</option>
-                <option value="text">Text</option>
-                <option value="gauge">Gauge</option>
-                <option value="dial">Dial</option>
-                <option value="trend">Trend</option>
-            </select>
+            <div class="inputs">
+                <select id="widget-type">
+                    <option value="" selected disabled hidden>Select a widget type</option>
+                    <option value="button">Button</option>
+                    <option value="text">Text</option>
+                    <option value="gauge">Gauge</option>
+                    <option value="dial">Dial</option>
+                    <option value="trend">Trend</option>
+                </select>
+            </div>
             <div class="inputs">
                 <label for="widget-width">Width: </label>
                 <input type="number" id="widget-width" class="short">
@@ -60,19 +62,23 @@
             </div>
         </div>
     </div>
-    
-    <div id="gui-container">
-    </div>
 
-    <div>
-        <div class="inputs">
-            <button id="show-code-button">Show Code</button>
+    <div id="working-area">
+
+        <div id="gui-container">
         </div>
-        <ul id="widgets-list">
 
-        </ul>
+        <div id="code">
+            <div class="inputs">
+                <button id="show-code-button">Show Code</button>
+            </div>
+            <ul id="widgets-list">
+            </ul>
+        </div>
+
 
     </div>
+
 
     <script src="script.js"></script>
 </body>

@@ -4,6 +4,7 @@ body {
 
 div.inputs {
     padding: 10px;
+    display: inline-block;
 }
 
 input.short {
@@ -15,7 +16,7 @@ button {
 }
 
 #toolbar-container {
-    display: flex;
+    display: block;
     justify-content: space-between;
     padding: 10px;
     border-bottom: 1px solid #ddd;
@@ -27,11 +28,24 @@ button {
 
 #gui-config-toolbar,
 #widget-config-toolbar {
-    display: flex;
-    flex-direction: column;
+    display: block;
+    /*flex-direction: column;*/
+    background-color: rgb(190,190,190);
+    border: 1px solid rgb(230,230,230);
+}
+
+
+#working-area {
+    display: inline-flex;
+}
+
+
+#code {
+    display: inline-block;
 }
 
 #gui-container {
+    display: inline-flex;
     position: relative;
     margin: 20px auto;
     background-color: #D3D3D3;

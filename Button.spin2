@@ -137,6 +137,7 @@ PUB configure(i, xt, yt, w, h, bg, fg, ol)
 
   debounce_timer := 500 'ms
   configured := true
+  enabled := true
   last_time := getms()
 
 PUB is_configured():conf

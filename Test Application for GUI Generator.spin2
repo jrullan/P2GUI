@@ -81,14 +81,14 @@ PUB init_gui()
   gui.set_area_bg(gui.BOTTOM_CENTER, color.blue)
   gui.set_area_bg(gui.BOTTOM_RIGHT, color.purple)
 
+  init_widgets()
+
+PUB init_widgets()
+
   'Button example configuration
-  button[P_BTN].configure(P_BTN,70,100,100,40,color.grey,color.black,color.grey)  '(i, xt, yt, w, h, bg, fg, ol)
-  button[P_BTN].set_mode(button.TOGGLE_MODE)
-  button[P_BTN].set_contents(String("P"))
-  button[P_BTN].set_font_size(2)
-  button[P_BTN].set_border_width(2)
-  button[P_BTN].set_enable(true)
-  button[P_BTN].set_event_handler(@button_event_handler)
+  button[P_BTN].configure(0, 10, 50, 80, 40, color.set_color(128,128,128), color.set_color(0,0,0), color.set_color(211,211,211))
+  button[P_BTN].set_contents(@"Button 0")
+
   gui.add_widget(@button[P_BTN].set_enable, @button[P_BTN].draw, @button[P_BTN].check_event)
 
 
