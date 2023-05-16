@@ -72,6 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
 			createWidget();						
         }
+
+		createCode();
     });
 
 	// Function to create a widget with the properties selected in the
@@ -134,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		if(selectedWidget){
 			createWidget();
 		}
+		createCode();
 	});
 
 	// Remove selected widget
@@ -155,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			document.getElementById('widget-border-color').value = '';
 
 		}
+		createCode();
 	});
 
 
