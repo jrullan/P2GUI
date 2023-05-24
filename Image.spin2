@@ -11,9 +11,9 @@ CON
 VAR
 'Attributes
   long id                       'Unique ID - (window index << 4)|(button index)
-  long bg_color                 'background color
-  long fg_color                 'foreground color
-  long ol_color                 'outline = border
+  word bg_color                 'background color
+  word fg_color                 'foreground color
+  word ol_color                 'outline = border
   word xtop                     'Top Left X (Pixel)
   word ytop                     'Top Left Y (Pixel)
   word xbot                     'Bottom Right X (Pixel)
@@ -31,8 +31,8 @@ VAR
 
 'Image
   long image_pointer            'Address of image in hub memory
-  byte image_width
-  byte image_height
+  word image_width
+  word image_height
   byte events_enabled
 
 
