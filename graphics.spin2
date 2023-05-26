@@ -39,6 +39,8 @@ _draw_rectangle  long 0
 _fill_rectangle  long 0
 _select_font_size long 0
 _fill_circle long 0
+_draw_fast_hline long 0
+_draw_fast_vline long 0
 
 
 PUB set_pointer(index, ptr)|addr
@@ -97,3 +99,9 @@ PUB select_font_size(s)
 
 PUB fill_circle(xc,yc,r,rgb)
   _fill_circle(xc,yc,r,rgb)
+
+PUB draw_fast_hline(x,y,l,rgb)
+  _draw_fast_hline(x,y,l,rgb)
+
+PUB draw_fast_vline(x,y,l,rgb)
+  _draw_fast_vline(x,y,l,rgb)

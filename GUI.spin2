@@ -31,7 +31,7 @@ CON
 'Drawing Methods Constants (for mapping driver methods to graphics methods)
   #0, CLEAR_SCREEN, SET_FOREGROUND_COLOR, SET_BACKGROUND_COLOR, SET_WINDOW, FILL_WINDOW, SET_COL_ROW
   #6, DRAW_CHAR, DRAW_STRING, DRAW_ICON, DRAW_PIXEL, DRAW_LINE
-  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, FILL_CIRCLE, MAX_METHODS
+  #11, DRAW_CIRCLE, DRAW_RECTANGLE, FILL_RECTANGLE, SELECT_FONT_SIZE, FILL_CIRCLE, DRAW_FAST_HLINE, DRAW_FAST_VLINE, MAX_METHODS
 
   MAX_WIDGETS = 10
 
@@ -110,6 +110,8 @@ PUB init(bg, fg, ol, o, cal) |  i
   graphics.set_pointer(FILL_RECTANGLE, @display.fillRectangle)
   graphics.set_pointer(SELECT_FONT_SIZE, @display.SelectFontSize)
   graphics.set_pointer(FILL_CIRCLE, @display.fillCircle)
+  graphics.set_pointer(DRAW_FAST_HLINE, @display.drawFastHLine)
+  graphics.set_pointer(DRAW_FAST_VLINE, @display.drawFastVLine)
 
   'set all areas colors to match canvas
   repeat i from 0 to 8

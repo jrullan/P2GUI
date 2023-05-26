@@ -14,9 +14,9 @@ CON
 VAR
 'Attributes
   long id                       'Unique ID - (window index << 4)|(button index)
-  long bg_color                 'background color
-  long fg_color                 'foreground color
-  long ol_color                 'outline = border
+  word bg_color                 'background color
+  word fg_color                 'foreground color
+  word ol_color                 'outline = border
   word xtop                     'Top Left X (Pixel)
   word ytop                     'Top Left Y (Pixel)
   word xbot                     'Bottom Right X (Pixel)
@@ -82,8 +82,8 @@ PUB draw()| b, c, d, ticks , i
 ''This method draws the graphical representation of this widget type
   if enabled
     'FILL
-    graphics.fill_rectangle(xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
-    'graphics.fill_circle(xc,yc,radius,bg_color)
+    'graphics.fill_rectangle(xtop+border_width,ytop+border_width,xbot-border_width,ybot-border_width,bg_color)
+    graphics.fill_circle(xc,yc,radius,bg_color)
 
     'BORDER
     repeat b from 0 to border_width-1
@@ -228,6 +228,7 @@ PUB configure(i, x, y, r, bg, fg, ol)
   range_limit := RANGE_ANGLE - 90 'phasing 90 degrees left so 0 is at the top center
 
   configured := true
+  enabled := true
   last_time := getms()
 
 PUB is_configured():conf

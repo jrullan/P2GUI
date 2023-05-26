@@ -78,7 +78,7 @@
             },
             "windows": {
               "command": "loadp2.exe",
-              "args": ["-b230400", "${config:topLevel}.binary", "-t", "-pCOM3"]
+              "args": ["-b230400", "${config:topLevel}.binary", "-t", "-pCOM9"]
             },
             "linux": {
               "command": "/opt/flexprop/bin/loadp2",

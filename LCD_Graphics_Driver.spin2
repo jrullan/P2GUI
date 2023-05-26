@@ -410,7 +410,7 @@ PUB drawChar(char) | xs, ys
 
 PUB drawStr(str)
   repeat while byte[str] <> 0
-    DrawChar(byte[str++])
+    drawChar(byte[str++])
 
 PUB drawString(col,row,str)
 ' Draw a 0 terminated string at col,row
@@ -432,18 +432,38 @@ PUB drawPixel(x, y, rgb) | i
   setWindow(x, y, x, y)                             ' 1 pixel
   fillWindow(rgb)
 
+PUB drawFastHLine(x,y,l,rgb)
+    setWindow(x,y,x+l,y)
+    fillWindow(rgb)
+
+PUB drawFastVLine(x,y,l,rgb)
+    setWindow(x,y,x,y+l)
+    fillWindow(rgb)
+
 PUB drawLine(xs, ys, xe, ye, rgb) | i, x, y, dx, dy
 ' Draw Line - start co-ords, end co-ords, color
   dx:= xe - xs
   dy:= ye - ys
-  if ABS(dx) > ABS(dy)   'plot incrementing x axis
-    repeat i from 0 to dx
-      y := (dy*i + dx/2)/dx
-      drawPixel(xs+i, ys+y, rgb)
-  else 'plot incrementing y axis
-    repeat i from 0 to dy
-      x := (dx*i + dy/2)/dy
-      drawPixel(xs+x, ys+i, rgb)
+
+  if dx == 0
+    if ys < ye
+        drawFastVLine(xs,ys,dy,rgb)
+    else
+        drawFastVLine(xs,ye,ABS(dy),rgb)
+  elseif dy == 0
+    if xs < xe
+        drawFastHLine(xs,ys,dx,rgb)
+    else
+        drawFastHLine(xe,ys,ABS(dx),rgb)
+  else
+    if ABS(dx) > ABS(dy)   'plot incrementing x axis
+      repeat i from 0 to dx
+        y := (dy*i + dx/2)/dx
+        drawPixel(xs+i, ys+y, rgb)
+    else 'plot incrementing y axis
+      repeat i from 0 to dy
+        x := (dx*i + dy/2)/dy
+        drawPixel(xs+x, ys+i, rgb)
 
 PUB drawCircle(xc, yc, r, rgb) | x, y
 ' Draw Circle d^2 = x^2 + y^2; y = SQRT(d^2 - x^2) (Pythagoras theorum)
@@ -462,38 +482,17 @@ PUB drawCircle(xc, yc, r, rgb) | x, y
     drawPixel(xc+y, yc-x, rgb)
     drawPixel(xc-y, yc-x, rgb)
 
-{
-PUB fillCircle(xc, yc, r, rgb)|x,y,xr,yr,d,a
-' Draws a filled circle using ROTXY
-  d := $80000000 / 180 'degrees unit in 32 bits
-  x := 0
-  y := r
-  a := 0
-
-  repeat a from 0 to 45 step 2
-    xr,yr := ROTXY(x,y,a*d)
-
-    'Window requires start column < end column and start row < end row
-    setWindow(xc-yr,yc-xr,xc+yr,yc+xr)
-    fillWindow(rgb)
-
-    'Window requires start column < end column and start row < end row
-    setWindow(xc-xr,yc-yr,xc+xr,yc+yr)
-    fillWindow(rgb)
-}
-
 PUB fillCircle(xc, yc, r, rgb)|x,y,xr,yr,d
-'Faster than above approach
 'The most efficient algorithm for creating a filled circle is
 'the Midpoint Circle Algorithm, also known as Bresenham's Circle Algorithm.
   x := 0
   y := r
   d := 1 - r
   repeat while x <= y
-    drawLine(xc-x, yc+y, xc+x, yc+y, rgb) 'last
-    drawLine(xc-x, yc-y, xc+x, yc-y, rgb) 'top
-    drawLine(xc-y, yc+x, xc+y, yc+x, rgb) 'third
-    drawLine(xc-y, yc-x, xc+y, yc-x, rgb) 'second
+    drawFastHLine(xc-x, yc+y, 2*x, rgb) 'last
+    drawFastHLine(xc-x, yc-y, 2*x, rgb) 'top
+    drawFastHLine(xc-y, yc+x, 2*y, rgb) 'third
+    drawFastHLine(xc-y, yc-x, 2*y, rgb) 'second
 
     x++
     if d < 0
@@ -583,8 +582,8 @@ PUB buttonIsHit (x, y): n
 PUB waitForButton (): n
 ' wait uintil a button is hit and returns its number
   repeat
-    wait_for_touch ()
-    wait_for_untouch ()
+    Wait_for_touch ()
+    Wait_for_untouch ()
     n:= buttonIsHit (Get_TS_XY ())
   until n > 0
 
@@ -598,23 +597,23 @@ PUB calibrateTouch() | xstr, ystr, tx,ty,tx_topx,ty_topy,tx_botx,ty_boty,spotx,s
 
   clearScreen()
   clearButtons()
-  drawstring(xstr, ystr, string("CALIBRATE TOP LEFT"))
-  SetColRow(cal_topx, cal_topy)
-  DrawChar("x")                                      ' draw top left calibration X
+  drawString(xstr, ystr, string("CALIBRATE TOP LEFT"))
+  setColRow(cal_topx, cal_topy)
+  drawChar("x")                                      ' draw top left calibration X
   int := 1
 
   Wait_for_touch()                                      ' wait for touch
   tx_topx,ty_topy:= Get_TS_XY_raw()                     ' calibration point top left
 
 '  term.fstr3(string("X %d Y %d int %d %s\r\n"),tx_topx,ty_topy,int)
-  clearscreen()
-  drawstring(xstr, ystr, string("CALIBRATE BOTTOM RIGHT"))
-  SetColRow(cal_botx, cal_boty)
+  clearScreen()
+  drawString(xstr, ystr, string("CALIBRATE BOTTOM RIGHT"))
+  setColRow(cal_botx, cal_boty)
 
-  DrawChar("x")                                      ' draw bottom right calibration X
+  drawChar("x")                                      ' draw bottom right calibration X
 
-  wait_for_untouch()                                    ' wait until not touched
-  wait_for_touch()                                      ' wait until touched
+  Wait_for_untouch()                                    ' wait until not touched
+  Wait_for_touch()                                      ' wait until touched
 
   tx_botx,ty_boty:= Get_TS_XY_raw()                     ' calibration point bottom right
 '  term.fstr3(string("X %d Y %d int %d %s\r\n"),tx_botx,ty_boty,spotx)
@@ -628,9 +627,9 @@ PUB calibrateTouch() | xstr, ystr, tx,ty,tx_topx,ty_topy,tx_botx,ty_boty,spotx,s
 
   calibrated:= true
 
-  clearscreen()
-  wait_for_untouch()
-  drawstring(xstr, ystr, string("TOUCH DISPLAY TO MAKE X"))
+  clearScreen()
+  Wait_for_untouch()
+  drawString(xstr, ystr, string("TOUCH DISPLAY TO MAKE X"))
   spotx:= cal_botx-(cal_edge/2)
   spoty:= cal_edge/2
   setWindow(spotx, spoty, spotx+cal_edge, spoty+cal_edge)
@@ -639,22 +638,22 @@ PUB calibrateTouch() | xstr, ystr, tx,ty,tx_topx,ty_topy,tx_botx,ty_boty,spotx,s
 
   setBGcolor(white)
   setFGcolor(black)
-  drawstring(spotx, cal_edge, string("DONE"))
+  drawString(spotx, cal_edge, string("DONE"))
   setFGcolor(green)
   setBGcolor(black)
 
   repeat
-    wait_for_untouch()                                  ' wait until not touched
-    wait_for_touch()                                    ' wait until touched
+    Wait_for_untouch()                                  ' wait until not touched
+    Wait_for_touch()                                    ' wait until touched
 
     spotx,spoty:= Get_TS_XY()
 
     if buttonIsHit (spotx, spoty)
       quit ' cal_done
-    SetColRow(spotx,spoty)
-    DrawChar("x")
+    setColRow(spotx,spoty)
+    drawChar("x")
   clearButtons()
-  clearscreen()
+  clearScreen()
 
 '    term.fstr3(string("X %d Y %d int %d %s\r\n"),spotx,spoty,spotx)
 '----------------------------------------------------------
@@ -724,7 +723,7 @@ CON
 PUB detects_valid_touch(): valid_touch_detected | pos_x, pos_y
   valid_touch_detected := false
   if Touched() AND (getms()-last_time >= DEBOUNCE_TIMER)
-    pos_x, pos_y := GET_TS_XY()
+    pos_x, pos_y := Get_TS_XY()
     if (pos_x > 0 AND pos_x <= cal_offx) AND (pos_y > 0 AND pos_y <= cal_offy)
       valid_touch_detected := true
       last_x := pos_x
@@ -804,7 +803,7 @@ entry                                                   ' PTRA contains the poin
                 fltl    PIN_SDA                        '|
                 drvh    PIN_CLK                        '|
                 drvh    PIN_LED                        '/
-                wrpin   modeLClk,PIN_CLK               ' smart pin transition mode
+                wrpin   modeLCLK,PIN_CLK               ' smart pin transition mode
                 wrpin   modeLTXD,PIN_SDA               ' smart pin synchronous serial transmit
                 wxpin   divCLK,PIN_CLK                 ' clock transition every 50ns
                 wypin   #2,PIN_CLK                     ' dummy pulse to force IN=1 (ready flag)
@@ -1100,7 +1099,7 @@ selectLCD
         if_nz   jmp     #.waitRdy                        ' wait until last CLK sequence finished
                 fltl    PIN_SDA
                 drvc    PIN_DC                         ' cmd=0 / data=1
-                wrpin   modeLClk,PIN_CLK               ' smart pin transition mode
+                wrpin   modeLCLK,PIN_CLK               ' smart pin transition mode
                 wrpin   modeLTXD,PIN_SDA               ' smart pin synchronous serial transmit
                 wxpin   divCLK,PIN_CLK                 ' clock transition every 50ns
         _ret_   drvl    PIN_CE                         ' CS=0
@@ -1136,14 +1135,14 @@ write16data     shl     data, #16                       ' prep word to write (ms
 ''+-----------------------------------------------------+
 pollTouchXY
                 mov     data,#$91
-                call    #get_ts_adc
+                call    #Get_ts_adc
                 mov     data,#$91
-                call    #get_ts_adc
+                call    #Get_ts_adc
                 mov     ts_xy,data
                 mov     data,#$D1
-                call    #get_ts_adc
+                call    #Get_ts_adc
                 mov     data,#$D0
-                call    #get_ts_adc
+                call    #Get_ts_adc
                 shl     data,#16
                 or      ts_xy,data
                 wrlong  ts_xy,ptra[6]
