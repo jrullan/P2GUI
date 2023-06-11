@@ -425,6 +425,18 @@ PUB DrawIcon (imagePtr, w, h)
   advanceCursor(w)
 
 ''+-----------------------------------------------------+
+'' Added by Jose Rullan 
+'' mailbox  (data): $88  -> sendImage command
+'' mailbox1 (data1): imagePtr
+''+-----------------------------------------------------+
+PUB sendImage(imagePtr,x,y,w,h)
+  setWindow(x, y, x+w-1, y+h-1)
+  WaitMailbox()
+  mailbox1 := imagePtr
+  mailbox  := $88_00_0000
+
+
+''+-----------------------------------------------------+
 ''| High Level Drivers                                  |
 ''+-----------------------------------------------------+
 PUB drawPixel(x, y, rgb) | i
@@ -785,7 +797,6 @@ PRI lcdInit(rotate)                                     ' screen rotation
   waitms(1)                                             ' 1ms
 
 
-
 DAT
 ''+-----------------------------------------------------+
 ''| PASM LCD Low Level Drivers (separate cog)           |
@@ -820,9 +831,9 @@ done            wrlong  #0,   PTRA                       ' clear hub mailbox
 
 wait            rdlong  data, PTRA         wz            ' wait for something to do
         if_z    jmp     #wait
-
-                setq    #6-1                            '\ get.. data,      data1,    coordss, coordse, colors, pixelno
-                rdlong  data, PTRA                      '/       cmd+params params(1) xs,ys    xe,ye    fg,bg   pixels
+                                                        '|       mailbox | mailbox1 | mailbox2s | mailbox2e | mailbox3 | mailbox4
+                setq    #6-1                            '\ get.. data,     data1,     coordss,    coordse,    colors,    pixelno
+                rdlong  data, PTRA                      '/       cmd+prms  params(1)  xs,ys       xe,ye       fg,bg      pixels
 
                 mov     command, data                   '\ extract command
                 shr     command, #24                    '|
@@ -840,10 +851,16 @@ wait            rdlong  data, PTRA         wz            ' wait for something to
         if_e    jmp     #paintchar                      '|
                 cmp     command, #$85     wz            '| $85= paint 16x16 symbol
         if_e    jmp     #paint16Icon                    '|
+
                 cmp     command, #$86     wz            '| $86= copy bitmap
         if_e    jmp     #copyBitmap                     '|
-                cmp     command, #$87     wz            '| $86= shrink bitmap
+
+                cmp     command, #$87     wz            '| $87= shrink bitmap
         if_e    jmp     #shrinkBitmap                   '|
+
+                cmp     command, #$88     wz            '| $88= paintImage
+        if_e    jmp     #send_image_data                '|
+
                 cmp     command, #$41     wz            '| $41= get touchscreen x,y
         if_e    jmp     #pollTouchXY                    '|
                 jmp     #done                           '/ unknown command, ignore
@@ -878,12 +895,12 @@ window          mov     data, #LCD_COL_ADR
 ''| LCD FillWindow(rgb,pixels)                          |
 ''+-----------------------------------------------------+
 fill            mov     data, #LCD_RAM_WRITE
-                call    #writecmd
-                mov     ctr, pixelno                    ' pixels (32b)
+                call    #writecmd                       ' Write command to ILI9341: LCD_RAM_WRITE
+                mov     ctr, pixelno                    ' pixels (32b)  (quantity of pixels)
                 shr     data1, #16                      ' rgb(16b)
-.fill_loop      mov     data, data1                     ' rgb
-                call    #write16data
-                djnz    ctr, #.fill_loop
+.fill_loop      mov     data, data1                     ' rgb           (color of the pixels) - Shift right data1
+                call    #write16data                    ' Write color to ILI9341
+                djnz    ctr, #.fill_loop                ' Decrease ctr (quantity of pixels) and loop if not zero
                 jmp     #done
 
 ''+-----------------------------------------------------+
@@ -1003,7 +1020,26 @@ next16iconpixel rol     pixels, #1    wc
         if_a    jmp     #paint16iconpixels              ' repeat if >0 left
                 ret
 
+''+-----------------------------------------------------+
+'' Added by Jose Rullan 
+'' sendImage(imagePtr, x, y, w, h)
+'' mailbox1 (data1): imagePtr
+''+-----------------------------------------------------+
+send_image_data
+                'Setup FIFO read of image data
+                rdfast #0, data1
 
+                'Send command to ILI9341
+                mov     data, #LCD_RAM_WRITE            ' Send LCD_RAM_WRITE command to ILI9341
+                call    #writecmd
+
+                'Send pixels to ILI9341
+.next_pixel     rfword  data                            ' Reads a pixel from imagePtr into data
+                call    #write16data                    ' Send pixel data to ILI9341
+                djnz    pixelno,#.next_pixel            ' Decrement pixelno and if not zero loop for next word (pixel data)
+                jmp     #done
+
+                
 ''+------------------------------------------------------------------+
 ''| LCD CopyBitmap 4bpp  mailbox3=palettePtr mailbox1=sourceData     |
 ''+------------------------------------------------------------------+
@@ -1112,11 +1148,11 @@ writecmd
 write
                 shl     data, #24 wc                    ' prep byte to write (msb first), bit8->C
                 call    #selectLCD                      ' prepare LCD smart pins
-                rev     data
-                wxpin   #$27,PIN_SDA                   ' 8 bits, start/stop mode
+                rev     data                            ' reverse bits in data (31..0 -> 0..31)
+                wxpin   #$27,PIN_SDA                    ' 8 bits, start/stop mode
                 wypin   data,PIN_SDA
-                drvl    PIN_SDA                        ' enable TX smart pin
-        _ret_   wypin   #16,PIN_CLK                    ' start CLK sequence
+                drvl    PIN_SDA                         ' enable TX smart pin
+        _ret_   wypin   #16,PIN_CLK                     ' start CLK sequence
 
 writex          call    #write                          ' write cmd/data (from spin)
                 jmp     #done
@@ -1125,7 +1161,7 @@ write16data     shl     data, #16                       ' prep word to write (ms
                 modc    _set wc
                 call    #selectLCD                      ' prepare LCD smart pins
                 rev     data
-                wxpin   #$2F,PIN_SDA                   ' 16 bits, start/stop mode
+                wxpin   #$2F,PIN_SDA                    ' 16 bits, start/stop mode
                 wypin   data,PIN_SDA
                 drvl    PIN_SDA
         _ret_   wypin   #32,PIN_CLK

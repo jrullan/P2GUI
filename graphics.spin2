@@ -41,7 +41,7 @@ _select_font_size long 0
 _fill_circle long 0
 _draw_fast_hline long 0
 _draw_fast_vline long 0
-
+_send_image long 0
 
 PUB set_pointer(index, ptr)|addr
 ''Store method pointer in global variable
@@ -104,4 +104,7 @@ PUB draw_fast_hline(x,y,l,rgb)
   _draw_fast_hline(x,y,l,rgb)
 
 PUB draw_fast_vline(x,y,l,rgb)
-  _draw_fast_vline(x,y,l,rgb)
+  _draw_fast_vline(x,y,l,rgb)       
+
+PUB send_image(imagePtr,x,y,w,h)
+  _send_image(imagePtr,x,y,w,h)   

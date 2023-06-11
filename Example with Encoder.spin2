@@ -54,7 +54,6 @@ OBJ
   icon[MAX_ICONS]               : "IconButton"
   gauge                         : "Gauge"              '876 bytes    108 bytes
   terminal                      : "Multiline_Display"
-  numkey                        : "Numkey"             '1820 bytes   76 bytes
   trend                         : "Trend_Lean"
   dial                          : "Dial"
   keypad                        : "Keypad"
@@ -172,7 +171,7 @@ PUB main()| inc, sine_val, z
 ''   Encoder Setup
 ''+--------------------------------------------------------------------+
 PUB setup_encoder()
-  knob.start(5, 6, 7, true, 50, 0, 100)
+  knob.start(5, 7, 9, true, 50, 0, 100)
   knob_debouncer.init(1000)
   knob_debouncer.start()
 
@@ -191,15 +190,6 @@ PUB init_gui()
   gui.init(BACKGROUND_COLOR, color.white, color.green, gui.PORTRAIT, false) '(bg, fg, ol, o, cal?)
   gui.set_screen_saving(0) 'Set screen saving time in seconds
   debug("Initialized GUI")
-
-  numkey.configure(0,60,60,120,160,color.darken(color.white,2), color.black, color.grey)
-  numkey.set_border_width(2)
-  numkey.set_font_size(2)
-  numkey.set_value(0)
-  numkey.set_event_handler(@numkey_event_handler)
-  numkey.set_enable(false)
-  gui.add_widget(@numkey.set_enable, @numkey.draw, @numkey.check_event)
-  debug("Added numkey")
 
 ''+--------------------------------------------------------------------+
 '' Menu widgets
@@ -430,31 +420,21 @@ PUB auto_event_handler(id,val)
 
 PUB call_numkey_event(id)
   screen[SCREEN_1].set_enable(false)
-
-  'Taking over numkey (setting the response event handler to my event handler)
-  numkey.set_event_handler(@numkey_event_handler)
-  numkey.set_enable(true)
-  numkey.draw()
+  gui.get_numkey(@numkey_event_handler)
 
 PUB numkey_event_handler(id,val)
   if val <> -1
     val := 0 #> val <# 100
     x := val
-    numkey.set_enable(false)
-    numkey.set_value(0)
     screen[SCREEN_1].set_enable(true)
-
     text[COUNTER_TXT].set_value(val)
     text[COUNTER_TXT].set_colors(color.black, util.red_to_green(val,0,100), color.grey)
     gauge.set_value_and_fill_ryg(val)
-
     screen[SCREEN_1].draw()
+
     terminal.write_val(@"Manual value set to " , val)
     trend.plot_value(val)
-
   else
-    numkey.set_enable(false)
-    numkey.set_value(0)
     screen[SCREEN_1].set_enable(true)
     screen[SCREEN_1].draw()
 

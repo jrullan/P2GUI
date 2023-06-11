@@ -97,11 +97,11 @@ PUB debug_string(s)|k, i, n
 ''+--------------------------------------------------------------------+
 ''   Text Methods
 ''+--------------------------------------------------------------------+
-PUB get_characters(buffer):characters|val
+PUB get_characters(buffer):size
+  return STRSIZE(buffer)
+
+{PUB get_characters(buffer):characters|val
 ''Get number of characters in buffer
-{
-  Checks buffer for characters until a terminating 0 is found
-}
   'debug(ZSTR(buffer))
   repeat
     val := BYTE[buffer + characters]
@@ -109,6 +109,7 @@ PUB get_characters(buffer):characters|val
       quit
     else
       characters++
+}
 
 PUB get_non_space_characters(buffer):characters|val
 ''Get number of characters in buffer
@@ -179,30 +180,22 @@ PUB set_value(val,buffer)|n,digits,exp_val,char_val,prev_digits,extra,c
   if val == 0
     BYTE[buffer] := $30                          '0 character
     digits := 1
-
   else
+    'When new number is less than previous number...
+    'fill with spaces to cover missing digits
     if prev_digits > digits
-    'Fill with spaces to cover missing digits
       extra := prev_digits - digits
-
       repeat c from 0 to extra-1
         BYTE[buffer + c] := $20                  'Insert spaces
 
-      repeat n from digits to 1
-        exp_val := exponent(10, n-1)
-        char_val := val / exp_val
-        val := val - char_val*exp_val
-        BYTE[buffer + (extra) + (digits-n)] := char_val + $30       'number character
-
-    else
-    'No need to fill spaces
-      repeat n from digits to 1
-        exp_val := exponent(10, n-1)
-        char_val := val / exp_val
-        val := val - char_val*exp_val
-        BYTE[buffer + (extra) + (digits-n)] := char_val + $30       'number character
+    repeat n from digits to 1
+      exp_val := exponent(10, n-1)
+      char_val := val / exp_val
+      val := val - char_val*exp_val
+      BYTE[buffer + (extra) + (digits-n)] := char_val + $30       'number character
 
   BYTE[buffer+digits+extra] := 0                                    'string terminating 0
+
 
 PUB set_value_ns(val,buffer)|n,digits,exp_val,char_val
 ''Fill buffer with digits of val no-spaces
@@ -211,7 +204,7 @@ PUB set_value_ns(val,buffer)|n,digits,exp_val,char_val
   characters representing its digits in buffer
 }
   digits := get_digits(val)
-
+  'debug("set_value_ns(", sdec(val),") ",sdec(digits) )
   if val == 0
     BYTE[buffer] := $30                          '0 character
     digits := 1
@@ -320,6 +313,7 @@ PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color
 }
   graphics.select_font_size(1 #> font_size <# 2)
   chars := get_characters(buffer)
+  'debug("Utilities draw_text() ", sdec(chars))
 
   'Early exit if no chars in buffer
   if chars <= 0
@@ -332,6 +326,7 @@ PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color
   graphics.set_background_color(bg_color)
   graphics.set_foreground_color(fg_color)
 
+  'debug("Utilities draw_text() ", sdec(previous_buffer))
   if previous_buffer <> 0
     'Draw characters that are different from previous value
     repeat n from 0 to chars-1
@@ -372,6 +367,10 @@ PUB draw_text(x,y,buffer,previous_buffer,font_size,compression,bg_color,fg_color
       else
         graphics.set_window(xs, y, xe, y+h)
         graphics.draw_char(k)
+
+PUB send_image(image_pointer, xpos, ypos, width, height, transparent_color)
+  if image_pointer
+    graphics.send_image(image_pointer,xpos,ypos,width,height)
 
 PUB draw_image(image_pointer, xpos, ypos, width, height, transparent_color)| pixel, x, y
 '' Draws image stored in FILE at xpos, ypos

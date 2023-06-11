@@ -61,7 +61,7 @@ PUB draw()| w, h, x, y, tw, th
 
     x := xtop + border_width + (w - image_width)/2
     y := ytop + border_width + (h - image_height)/2
-    util.draw_image(image_pointer, xtop, ytop, image_width, image_height, bg_color)
+    util.send_image(image_pointer, xtop, ytop, image_width, image_height, bg_color)
 
 PUB check_event(coord):is_mine | x, y
   if configured AND enabled AND events_enabled
