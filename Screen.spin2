@@ -17,6 +17,7 @@ VAR
   long my_event_handler
   byte id
   byte enabled
+  long background_image_pointer
 
 'Widgets method pointers
   LONG widget_enable_method[MAX_WIDGETS]
@@ -27,6 +28,7 @@ VAR
 OBJ
   util : "Utilities"
   graphics : "Graphics"
+  background_image : "Image"  
 
 PUB null()
 
@@ -63,7 +65,10 @@ PUB set_enable(e):w
 PUB draw()| w
   if enabled
 
-    graphics.fill_rectangle(xtop,ytop,xbot,ybot,bg_color)
+    if background_image_pointer
+      graphics.send_image(background_image_pointer,xtop,ytop,xbot-xtop,ybot-ytop)
+    else
+      graphics.fill_rectangle(xtop,ytop,xbot,ybot,bg_color)
 
     'BORDER
     util.draw_border(xtop,ytop,xbot,ybot,ol_color,border_width,invert_border)
@@ -92,6 +97,8 @@ PUB check_event(coord):is_mine | x, y, i
             quit
 
 
+PUB set_background_image(imagePtr)
+  background_image_pointer := imagePtr
 
 ''+--------------------------------------------------------------------+
 ''   CONFIGURATION METHODS
@@ -106,6 +113,9 @@ PUB configure(s, xt, yt, w, h, bg, fg, ol)
   bg_color := bg
   fg_color := fg
   ol_color := ol
+
+  background_image.set_image(background_image_pointer, w, h)
+  background_image.configure(0,xt,yt,bg_color,fg_color,ol_color)
 
   border_width := 1
   invert_border := false
