@@ -88,15 +88,15 @@ PUB draw()| w, h, x, y, tw, th
     'Alt button
     alt_button.draw()
 
-
+{
     'Keypad Fill
     x := xtop
     y := ytop + T_HEIGHT
     graphics.set_window(x, y, x + K_WIDTH, y + K_HEIGHT)
     graphics.fill_window(bg_color)
-
+}
     'Keypad image
-    util.draw_image(image_pointer, xtop, ytop+T_HEIGHT, K_WIDTH, K_HEIGHT, color.white)
+    util.send_image(image_pointer, xtop, ytop+T_HEIGHT, K_WIDTH, K_HEIGHT, color.white)
     
     
 
