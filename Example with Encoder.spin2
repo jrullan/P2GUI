@@ -69,6 +69,7 @@ banner FILE "demo_banner.p2"
 red_led FILE "red_led.p2"
 orange_led FILE "orange_led.p2"
 green_led FILE "green_led.p2"
+wood  FILE "wood2.p2"
 
 VAR
   LONG drawing_method_pointer
@@ -243,6 +244,7 @@ PUB init_gui()
   screen[SCREEN_1].configure(SCREEN_1,0,40,240,228,BACKGROUND_COLOR, color.black, color.white)
   screen[SCREEN_1].set_border_width(0)
   screen[SCREEN_1].set_enable(true)
+  screen[SCREEN_1].set_background_image(@wood)
   gui.add_widget(@screen[SCREEN_1].set_enable, @screen[SCREEN_1].draw, @screen[SCREEN_1].check_event)
   debug("Added SCREEN_1")
 
@@ -333,10 +335,11 @@ PUB init_gui()
   screen[SCREEN_2].configure(SCREEN_2,0,40,240,228,BACKGROUND_COLOR, color.black, color.white)
   screen[SCREEN_2].set_border_width(0)
   screen[SCREEN_2].set_enable(false)
+  screen[SCREEN_2].set_background_image(@wood)
   gui.add_widget(@screen[SCREEN_2].set_enable, @screen[SCREEN_2].draw, @screen[SCREEN_2].check_event)
   debug("Added SCREEN_2")
 
-  keypad.configure(0, 0, 130, color.darken(color.white,0), color.blue, color.grey)
+  keypad.configure(0, 0, 85, color.darken(color.white,0), color.blue, color.grey)
   keypad.set_event_handler(@keypad_event_handler)
   keypad.set_enable(true)
   screen[SCREEN_2].add_widget(@keypad.set_enable, @keypad.draw, @keypad.check_event)
